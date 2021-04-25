@@ -303,15 +303,20 @@ function NewItem_MouseDown{
 
 $global:DoubleClick = $false
 function NewItem_MouseUp{
+    FormPanel_MouseClick
     if($global:DoubleClick){
         $global:DoubleClick = $false
         Write-Host "Insert DoubleClick action..."
         if($this.Name ="TABCTRL_"){
             $item = $this.Controls[0]
-            $item.TabPages.Add("Tab Page "+($item.TabPages.Count+1).ToString())
+            $item.TabPages.Add("Tab Page ("+($item.TabPages.Count+1).ToString()+")")
+            $global:Numbers++
+            $item.TabPages[$item.TabPages.Count-1].Name = ("Tab Page "+$global:Numbers.ToString())
             $this.Text = "....................." + $this.Text
         }
-    }else {$global:DoubleClick = $true}
+    }else {
+        $global:DoubleClick = $true
+    }
     if($global:ResizeTarg -ne $null){
         $global:ResizeTarg.Cursor = [System.Windows.Forms.Cursors]::Default
     }
@@ -514,7 +519,6 @@ Function FormPanel_MouseClick{
             $TabCtrl.Tag = "TABCTRL_"
             
             
-            
         } elseif($FormList.SelectedIndex -eq 16){ #TextBox
             $NewLabel = New-Object System.Windows.Forms.TextBox
         } elseif($FormList.SelectedIndex -eq 17){ #TrackBar
@@ -666,7 +670,10 @@ function DLM_Load{
     {
         $line++
         if($getline.Contains("=")){
-            if($getline.Split("=")[1] -ne " "){
+            $cmdsplit = $getline.Split("=")
+            $cmdsplit[0] = $cmdsplit[0].Replace(" ","")
+            if($cmdsplit[1] -ne " "){
+                $getline = $cmdsplit[0]+" ="+$cmdsplit[1]
                 if($getline.Contains("MainForm = New-Object") -eq $false){
                     $newexp = $getline.Replace("MainForm","FormPanel")
                     $newexp = $newexp.Replace("ClientSize","Size")
@@ -683,7 +690,7 @@ function DLM_Load{
                     }
                 }
             }
-        }elseif($getline.Contains("MainForm.Controls")){
+        }elseif($getline.Contains(".Controls")){
             $newexp = $getline.Replace("MainForm","FormPanel")
             Write-Host $newexp
             Invoke-Expression $newexp
@@ -694,8 +701,34 @@ function DLM_Load{
     $FormBorder.Width = $FormPanel.Width+10
     $FormPanel.Name="MainForm"
     $FormTitlebar.Width=$FormBorder.Width
+
+    
     $IOStream.Close()
     $FileDialog.Dispose()
+    foreach($item in $FormPanel.Controls){
+        Write-Host $item.GetType()
+        if($item.GetType().ToString() -eq "System.Windows.Forms.TabControl"){
+            $NewLabel = New-Object System.Windows.Forms.Label
+            $NewLabel.Tag = "TabControl"
+            $FormPanel.Controls.Add($NewLabel)
+            $NewLabel.Location = $item.Location
+            $NewLabel.Controls.Add($item)
+            $NewLabel.Size = $item.Size
+            $item.Size = $NewLabel.Size
+            Write-Host "TABCTRL_ Created"
+            $item.Location = Point 0 0
+            $NewLabel.Name = "TABCTRL_"
+            
+            $NewLabel.BackColor = [System.Drawing.Color]::FromArgb(20,20,20)
+            $NewLabel.Add_MouseMove({NewItem_MouseMove})
+            $NewLabel.Add_MouseDown({NewItem_MouseDown})
+            $NewLabel.Add_MouseUp({NewItem_MouseUp})
+            $NewLabel.Add_DoubleClick({NewItem_DoubleClick})
+            
+
+        }
+    }
+    
 }
 
 function DLM_Save{
@@ -707,8 +740,8 @@ function DLM_Save{
     $Controls = OutputControls -Form $FormPanel
     ($MainFormOut+$Controls+"`n"+'$MainForm.ShowDialog()') | Out-File "NewForm.ps1"
 }
-$UnsupportedVariables = @("DialogResult","AutoScrollMinSize","AutoScrollPosition","AutoScrollMargin","DataSource","FormatInfo","AutoCompleteCustomSource","Site","RightToLeft","ImeMode","AutoSizeMode","Cursor","DisplayRectangle","Size","Location","ClientSize","AccessibleDefaultActionDescription","Region","Container","Padding","PreferredSize","WindowTarget","TopLevelControl","RecreatingHandle","ProductVersion","ProductName","Parent","MaximumSize","MinimumSize","Margin","IsMirrored","IsAccessible","InvokeRequired","IsHandleCreated","HasChildren","Handle","Disposing","IsDisposed","DeviceDpi","DataBindings","Created","Controls","ContextMenuStrip","ContextMenu","ContainsFocus","CompanyName","ClientRectangle","CausesValidation","Capture","Bounds","BindingContext","BackgroundImageLayout","BackgroundImage","LayoutEngine","AutoScrollOffset","AccessibleRole","AccessibleName","AccessibleDescription","AccessibleEfaultActionDescription","AccessibilityObject","UseVisualStyleBackColor","UseCompatibleTextRendering","TextImageRelation","Image","ImageAlign","ImageKey","ImageList")
-$ReadOnlyVariables = @("CustomTabOffsets","SelectedIndices","TabPages","TabCount","RowCount","ItemSize","DockPadding","VerticalScroll","HorizontalScroll","SelectedItems","Items","Site","Right","Focused","CanSelect","CanFocus","Bottom","TextLength","PreferredHeight","PreferredWidth","CanUndo")
+$UnsupportedVariables = @("LineColor","DialogResult","AutoScrollMinSize","AutoScrollPosition","AutoScrollMargin","DataSource","FormatInfo","AutoCompleteCustomSource","Site","RightToLeft","ImeMode","AutoSizeMode","Cursor","DisplayRectangle","Size","Location","ClientSize","AccessibleDefaultActionDescription","Region","Container","Padding","PreferredSize","WindowTarget","TopLevelControl","RecreatingHandle","ProductVersion","ProductName","Parent","MaximumSize","MinimumSize","Margin","IsMirrored","IsAccessible","InvokeRequired","IsHandleCreated","HasChildren","Handle","Disposing","IsDisposed","DeviceDpi","DataBindings","Created","Controls","ContextMenuStrip","ContextMenu","ContainsFocus","CompanyName","ClientRectangle","CausesValidation","Capture","Bounds","BindingContext","BackgroundImageLayout","BackgroundImage","LayoutEngine","AutoScrollOffset","AccessibleRole","AccessibleName","AccessibleDescription","AccessibleEfaultActionDescription","AccessibilityObject","UseVisualStyleBackColor","UseCompatibleTextRendering","TextImageRelation","Image","ImageAlign","ImageKey","ImageList")
+$ReadOnlyVariables = @("FlatAppearance","VisibleCount","CustomTabOffsets","SelectedIndices","TabPages","TabCount","RowCount","ItemSize","DockPadding","VerticalScroll","HorizontalScroll","SelectedItems","Items","Site","Right","Focused","CanSelect","CanFocus","Bottom","TextLength","PreferredHeight","PreferredWidth","CanUndo")
 $UnsupportedVariables = $UnsupportedVariables + $ReadOnlyVariables
 function OutputControls{
     param ($Form, $parent)
@@ -719,6 +752,7 @@ function OutputControls{
 
     $count=0
     foreach($item in $Form.Controls){
+        $item.Name = $item.Name.Replace(" ","")
         if($item.Name -ne "TABCTRL_"){
             $count++
             $output = $output + "$" + $item.Name + " = New-Object " + $item.GetType()+"`n"
