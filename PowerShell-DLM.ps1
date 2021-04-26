@@ -108,6 +108,7 @@ function FormBorder_MouseUp{
 }
 
 function NewItem_MouseMove(){
+    $parent = FindParentControl -child_form $this
     $MousePos_X = [System.Windows.Forms.Cursor]::Position.X
     $MousePos_Y = [System.Windows.Forms.Cursor]::Position.Y
     
@@ -116,7 +117,7 @@ function NewItem_MouseMove(){
     $TopEdge = $this.Location.Y + $DLM.Location.Y + $FormPanel.Location.Y + 25
     $BottomEdge = $TopEdge+ $this.Size.Height
     #$FormTitlebar.Text = ($MousePos_X.ToString() +"," +$MousePos_Y.ToString() + "|" + $BottomEdge.ToString())
-    if($this.Tag -eq "TABCTRL_"){
+    if($parent.Name -eq "TABCTRL_"){
         foreach($item in $FormPanel.Controls){
             if($item.Name -eq "TABCTRL_"){
                 $TCtrl = $item.Controls[0]
@@ -136,6 +137,11 @@ function NewItem_MouseMove(){
                 }
             }
         }
+    }elseif($parent.Name -ne "FormPanel" -and $parent.GetType().ToString() -in @("System.Windows.Forms.Panel","System.Windows.Forms.GroupBox")){
+        $LeftEdge += $parent.Location.X
+        $RightEdge += $parent.Location.X
+        $TopEdge += $parent.Location.Y+20
+        $BottomEdge += $parent.Location.Y+20
     }
     if($MousePos_X -ge ($RightEdge)){
        # Write-Host $TopEdge $MousePos_Y
@@ -158,6 +164,7 @@ function NewItem_MouseMove(){
 
 function NewItem_MouseDown{
     if($_.Button -eq [System.Windows.Forms.MouseButtons]::Left){
+        $parent = FindParentControl -child_form $this
         $MousePos_X = [System.Windows.Forms.Cursor]::Position.X
         $MousePos_Y = [System.Windows.Forms.Cursor]::Position.Y
         $LeftEdge = $this.Location.X + $DLM.Location.X + $FormPanel.Location.X
@@ -165,7 +172,7 @@ function NewItem_MouseDown{
         $TopEdge = $this.Location.Y + $DLM.Location.Y + $FormPanel.Location.Y + 25
         $BottomEdge = $TopEdge+ $this.Size.Height
         Write-Host ("Top Edge: " + $TopEdge.ToString() + "`nMouse Y: "+$MousePos_Y)
-        if($this.Tag -eq "TABCTRL_"){
+        if($parent.Name -eq "TABCTRL_"){
             foreach($item in $FormPanel.Controls){
                 if($item.Name -eq "TABCTRL_"){
                     $TCtrl = $item.Controls[0]
@@ -185,6 +192,11 @@ function NewItem_MouseDown{
                     }
                 }
             }
+        }elseif($parent.Name -ne "FormPanel" -and $parent.GetType().ToString() -in @("System.Windows.Forms.Panel","System.Windows.Forms.GroupBox")){
+            $LeftEdge += $parent.Location.X
+            $RightEdge += $parent.Location.X
+            $TopEdge += $parent.Location.Y+20
+            $BottomEdge += $parent.Location.Y+20
         }
         $offset = 0
         $CanSize = $false
@@ -321,7 +333,7 @@ function NewItem_MouseUp{
                 $item.TabPages.Add("Tab Page ("+($item.TabPages.Count+1).ToString()+")")
                 $global:Numbers++
                 $item.TabPages[$item.TabPages.Count-1].Name = ("Tab Page "+$global:Numbers.ToString())
-                $this.Text = "....................." + $this.Text
+                $this.Text = "........................" + $this.Text
             }
         }
     }else {
@@ -335,16 +347,22 @@ function NewItem_MouseUp{
     $global:Moving = $false
     if($this -in $FormPanel.Controls){
         foreach($item in $FormPanel.Controls){
-            if($item.Name -eq "TABCTRL_" -and $this -ne $item){
+            if($this -ne $item){
                 if($this.Location.x -ge $item.Location.x){
-                    if($this.Location.y -ge $item.Location.y){
+                   if($this.Location.y -ge $item.Location.y){
                         if($this.Location.x -le $item.Location.x + $item.Size.Width - ($this.Size.Width/2)){
                             if($this.Location.y -le $item.Location.y + $item.Size.Height - ($this.Size.Height/2)){
-                                $ctrl = $item.Controls[0]
-                                $locdif = $this.location - $item.Location
-                                $ctrl.TabPages[$ctrl.SelectedIndex].Controls.AddRange(@($this) + $ctrl.TabPages[$ctrl.SelectedIndex].Controls)
-                                $this.Tag = "TABCTRL_"
-                                $this.Location=$locdif
+                                if($item.Name -eq "TABCTRL_"){
+                                    $ctrl = $item.Controls[0]
+                                    $locdif = $this.location - $item.Location
+                                    $ctrl.TabPages[$ctrl.SelectedIndex].Controls.AddRange(@($this) + $ctrl.TabPages[$ctrl.SelectedIndex].Controls)
+                                    $this.Tag = "TABCTRL_"
+                                    $this.Location=$locdif
+                                }elseif($item.GetType().ToString() -in @("System.Windows.Forms.Panel","System.Windows.Forms.GroupBox")){
+                                    $locdif = $this.location - $item.Location
+                                    $item.Controls.AddRange(@($this) + $item.Controls)
+                                    $this.Location=$locdif
+                                }
                             }
                         }
                     }
@@ -535,6 +553,8 @@ Function FormPanel_MouseClick{
             $NewLabel = New-Object System.Windows.Forms.TreeView
         } elseif($FormList.SelectedIndex -eq 19){ #VScrollBar
             $NewLabel = New-Object System.Windows.Forms.VScrollBar
+        } elseif($FormList.SelectedIndex -eq 20){ #VScrollBar
+            $NewLabel = New-Object System.Windows.Forms.Panel
         } 
         
         $MousePos = GetMousePos
@@ -577,6 +597,16 @@ function Obj_ToBack{
     }
 }
 
+function Obj_Delete{
+    if($global:PropOwner -ne $null){
+        if($global:PropOwner.GetType().ToString() -eq "System.Windows.Forms.TabControl"){
+            $parent = FindParentControl -child_form $global:PropOwner
+            $parent.Dispose()
+        }
+        $global:PropOwner.Dispose()
+    }
+}
+
 function FindParentControl{
     param ($child_form,$src)
     if($child_form -ne $null){
@@ -599,7 +629,7 @@ $RClickMenu = New-Object System.Windows.Forms.ContextMenu
 $RClickMenu.MenuItems.AddRange(@("Bring To Front","Send To Back","Delete"))
 $RClickMenu.MenuItems[0].Add_Click({Obj_ToFront})
 $RClickMenu.MenuItems[1].Add_Click({Obj_ToBack})
-$RClickMenu.MenuItems[2].Add_Click({if($global:PropOwner -ne $null){$global:PropOwner.Dispose()}})
+$RClickMenu.MenuItems[2].Add_Click({Obj_Delete})
 #########################################################################
 ######################## Form Builder & Properties
 $FormPanel = New-Object System.Windows.Forms.Panel
@@ -612,7 +642,7 @@ $FormPanel.Add_MouseClick({FormPanel_MouseClick})
 $FormList =New-Object System.Windows.Forms.ListBox
 $FormList.Location = Point 0 25
 $FormList.Size = Size 200 575
-$FormList.Items.AddRange(@("Button","CheckBox", "CheckedListBox","ContextMenu", "DataGridView","DateTimePicker","GroupBox","HScrollBar","Label","ListBox","ListView","Menu","PictureBox","ProgressBar","RadioButton","TabControl","TextBox","TrackBar","TreeView","VScrollBar"))
+$FormList.Items.AddRange(@("Button","CheckBox", "CheckedListBox","ContextMenu", "DataGridView","DateTimePicker","GroupBox","HScrollBar","Label","ListBox","ListView","Menu","PictureBox","ProgressBar","RadioButton","TabControl","TextBox","TrackBar","TreeView","VScrollBar","Panel"))
 $FormList.Font = New-Object System.Drawing.Font("Arial",14)
 #
 
@@ -649,7 +679,7 @@ $Menu_Obj = New-Object System.Windows.Forms.ToolStripMenuItem
 $Menu_Obj.Text = "Objects"
 $Obj_Delete = New-Object System.Windows.Forms.ToolStripMenuItem
 $Obj_Delete.Text = "Delete Object"
-$Obj_Delete.Add_Click({if($global:PropOwner -ne $null){$global:PropOwner.Dispose()}})
+$Obj_Delete.Add_Click({Obj_Delete})
 $Obj_ToFront = New-Object System.Windows.Forms.ToolStripMenuItem
 $Obj_ToFront.Text = "Bring Object To Front"
 $Obj_ToFront.Add_Click({Obj_ToFront})
@@ -727,6 +757,8 @@ function Activate{
     $MainLoop.Start()
 }
 
+#########################################################################
+######################## Saving & Loading
 function DLM_Load{
     $FormPanel.Controls.Clear()
     $FileDialog = New-Object System.Windows.Forms.OpenFileDialog
