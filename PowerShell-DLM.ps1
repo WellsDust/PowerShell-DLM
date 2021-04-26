@@ -157,63 +157,64 @@ function NewItem_MouseMove(){
 }
 
 function NewItem_MouseDown{
-    $MousePos_X = [System.Windows.Forms.Cursor]::Position.X
-    $MousePos_Y = [System.Windows.Forms.Cursor]::Position.Y
-    $LeftEdge = $this.Location.X + $DLM.Location.X + $FormPanel.Location.X
-    $RightEdge = $LeftEdge + $this.Size.Width
-    $TopEdge = $this.Location.Y + $DLM.Location.Y + $FormPanel.Location.Y + 25
-    $BottomEdge = $TopEdge+ $this.Size.Height
-    Write-Host ("Top Edge: " + $TopEdge.ToString() + "`nMouse Y: "+$MousePos_Y)
-    if($this.Tag -eq "TABCTRL_"){
-        foreach($item in $FormPanel.Controls){
-            if($item.Name -eq "TABCTRL_"){
-                $TCtrl = $item.Controls[0]
-                $TPage = $TCtrl.TabPages[$TCtrl.SelectedIndex]
-                $truecontainer = $false
+    if($_.Button -eq [System.Windows.Forms.MouseButtons]::Left){
+        $MousePos_X = [System.Windows.Forms.Cursor]::Position.X
+        $MousePos_Y = [System.Windows.Forms.Cursor]::Position.Y
+        $LeftEdge = $this.Location.X + $DLM.Location.X + $FormPanel.Location.X
+        $RightEdge = $LeftEdge + $this.Size.Width
+        $TopEdge = $this.Location.Y + $DLM.Location.Y + $FormPanel.Location.Y + 25
+        $BottomEdge = $TopEdge+ $this.Size.Height
+        Write-Host ("Top Edge: " + $TopEdge.ToString() + "`nMouse Y: "+$MousePos_Y)
+        if($this.Tag -eq "TABCTRL_"){
+            foreach($item in $FormPanel.Controls){
+                if($item.Name -eq "TABCTRL_"){
+                    $TCtrl = $item.Controls[0]
+                    $TPage = $TCtrl.TabPages[$TCtrl.SelectedIndex]
+                    $truecontainer = $false
                 
-                foreach($ctrl in $TPage.Controls){
-                    if($ctrl.Name -eq $this.Name){
-                        $truecontainer = $true
+                    foreach($ctrl in $TPage.Controls){
+                        if($ctrl.Name -eq $this.Name){
+                            $truecontainer = $true
+                        }
                     }
-                }
-                if($truecontainer){
-                    $LeftEdge += $item.Location.X
-                    $RightEdge += $item.Location.X
-                    $TopEdge += $item.Location.Y+20
-                    $BottomEdge += $item.Location.Y+20
+                    if($truecontainer){
+                        $LeftEdge += $item.Location.X
+                        $RightEdge += $item.Location.X
+                        $TopEdge += $item.Location.Y+20
+                        $BottomEdge += $item.Location.Y+20
+                    }
                 }
             }
         }
-    }
-    $offset = 0
-    $CanSize = $false
-    if($MousePos_X -ge ($RightEdge)){
-       # Write-Host $TopEdge $MousePos_Y
-        if($MousePos_Y -le ($TopEdge)){
-            $CanSize = $true
+        $offset = 0
+        $CanSize = $false
+        if($MousePos_X -ge ($RightEdge)){
+           # Write-Host $TopEdge $MousePos_Y
+            if($MousePos_Y -le ($TopEdge)){
+                $CanSize = $true
+            }elseif($MousePos_Y -ge ($BottomEdge)){
+                $CanSize = $true
+            }else {
+                $CanSize = $true
+            }
         }elseif($MousePos_Y -ge ($BottomEdge)){
             $CanSize = $true
-        }else {
-            $CanSize = $true
         }
-    }elseif($MousePos_Y -ge ($BottomEdge)){
-        $CanSize = $true
-    }
 
-    if($CanSize){
-        #Write-Host "Start Size"
-        $global:MDPos = [System.Windows.Forms.Cursor]::Position
-        $global:ResizeTarg = $this
-        $global:Resizing = $true
-        $global:MDSize = $this.Size
-        #Write-Host $this.Name
-    }else{
-        $global:Moving =$true
-        $global:MoveTarg = $this
-        $global:MDLoc = $this.Location
-        $global:MDPos = [System.Windows.Forms.Cursor]::Position
+        if($CanSize){
+            #Write-Host "Start Size"
+            $global:MDPos = [System.Windows.Forms.Cursor]::Position
+            $global:ResizeTarg = $this
+            $global:Resizing = $true
+            $global:MDSize = $this.Size
+            #Write-Host $this.Name
+        }else{
+            $global:Moving =$true
+            $global:MoveTarg = $this
+            $global:MDLoc = $this.Location
+            $global:MDPos = [System.Windows.Forms.Cursor]::Position
+        }
     }
-    
     #################### Populate "Properties" window ($FormProperties) ##################
     if($global:PropOwner -ne $this){
         foreach($item in $FormProperties.Controls){
@@ -313,18 +314,20 @@ function NewItem_MouseUp{
     FormPanel_MouseClick
     if($global:DoubleClick){
         $global:DoubleClick = $false
-        Write-Host "Insert DoubleClick action..."
+        #Write-Host "Insert DoubleClick action..."
         if($this.Name ="TABCTRL_"){
             $item = $this.Controls[0]
-            $item.TabPages.Add("Tab Page ("+($item.TabPages.Count+1).ToString()+")")
-            $global:Numbers++
-            $item.TabPages[$item.TabPages.Count-1].Name = ("Tab Page "+$global:Numbers.ToString())
-            $this.Text = "....................." + $this.Text
+            if($item -ne $null){
+                $item.TabPages.Add("Tab Page ("+($item.TabPages.Count+1).ToString()+")")
+                $global:Numbers++
+                $item.TabPages[$item.TabPages.Count-1].Name = ("Tab Page "+$global:Numbers.ToString())
+                $this.Text = "....................." + $this.Text
+            }
         }
     }else {
         $global:DoubleClick = $true
     }
-    if($global:ResizeTarg -ne $null){
+    if($global:ResizeTarg.Name -ne ""){
         $global:ResizeTarg.Cursor = [System.Windows.Forms.Cursors]::Default
     }
     $this.Cursor = [System.Windows.Forms.Cursors]::Default
@@ -334,9 +337,7 @@ function NewItem_MouseUp{
         foreach($item in $FormPanel.Controls){
             if($item.Name -eq "TABCTRL_" -and $this -ne $item){
                 if($this.Location.x -ge $item.Location.x){
-                    Write-Host "Great X"
                     if($this.Location.y -ge $item.Location.y){
-                        Write-Host "Great Y"
                         if($this.Location.x -le $item.Location.x + $item.Size.Width - ($this.Size.Width/2)){
                             if($this.Location.y -le $item.Location.y + $item.Size.Height - ($this.Size.Height/2)){
                                 $ctrl = $item.Controls[0]
@@ -545,7 +546,7 @@ Function FormPanel_MouseClick{
             $NewLabel.Name = $FormList.Items[$FormList.SelectedIndex] + $global:Numbers.ToString()
             $global:Numbers++
         }
-        if($FormList.SelectedIndex -notin @(-1,0,15)){
+        if($FormList.SelectedIndex -notin @(-1,0,1,15)){
             #Write-Host "Not in?"
             $NewLabel.BorderStyle = 2
         }
@@ -553,6 +554,7 @@ Function FormPanel_MouseClick{
         $NewLabel.Add_MouseDown({NewItem_MouseDown})
         $NewLabel.Add_MouseUp({NewItem_MouseUp})
         $NewLabel.Add_DoubleClick({NewItem_DoubleClick})
+        $NewLabel.ContextMenu = $RClickMenu
         $FormList.SelectedIndex = -1
         $FormPanel.Controls.Add($NewLabel)
     }
@@ -591,6 +593,13 @@ function FindParentControl{
         }
     }
 }
+#########################################################################
+######################## Right Click Menu
+$RClickMenu = New-Object System.Windows.Forms.ContextMenu
+$RClickMenu.MenuItems.AddRange(@("Bring To Front","Send To Back","Delete"))
+$RClickMenu.MenuItems[0].Add_Click({Obj_ToFront})
+$RClickMenu.MenuItems[1].Add_Click({Obj_ToBack})
+$RClickMenu.MenuItems[2].Add_Click({if($global:PropOwner -ne $null){$global:PropOwner.Dispose()}})
 #########################################################################
 ######################## Form Builder & Properties
 $FormPanel = New-Object System.Windows.Forms.Panel
@@ -761,7 +770,7 @@ function DLM_Load{
     $FormBorder.Width = $FormPanel.Width+10
     $FormPanel.Name="MainForm"
     $FormTitlebar.Width=$FormBorder.Width
-
+    $DLM.Width = $FormBorder.Width+500
     
     $IOStream.Close()
     $FileDialog.Dispose()
@@ -832,12 +841,15 @@ function OutputControls{
                     }
                     
                     if($ePropValue -ne $null -and $ePropValue.ToString() -ne ""){
-                        
+                        Write-Host $item.GetType()
                         if($ePropValue.ToString() -eq "True"){$ePropValue = '$true'}
                         elseif($ePropValue.ToString() -eq "False"){$ePropValue = '$false'}
                         elseif($ePropName -eq "System.Windows.Forms.Appearance"){$ePropValue = '[System.Windows.Forms.Appearance]::' + $ePropValue}
                         elseif([Int32]::TryParse($ePropValue,[ref]$OutNumber)){$ePropValue = $OutNumber}
-                        elseif($ePropName -eq "TextAlign"){$ePropValue = '[System.Drawing.ContentAlignment]::' + $ePropValue}
+                        elseif($ePropName -eq "TextAlign"){
+                            if($item.GetType().ToString() -ne "System.Windows.Forms.TextBox"){$ePropValue = '[System.Drawing.ContentAlignment]::' + $ePropValue}
+                            else { $ePropValue = '[System.Windows.Forms.HorizontalAlignment]::' + $ePropValue}
+                        }
                         elseif($ePropName -eq "Font"){$ePropValue = "[System.Drawing.Font]::new("+'"'+$ePropValue.FontFamily.Name+'"'+","+$ePropValue.Size.ToString()+",[System.Drawing.FontStyle]::" +$ePropValue.Style.ToString() +")"}
                         elseif($ePropName -in @("BackColor","ForeColor")){$ePropValue = '[System.Drawing.Color]::FromArgb('+$ePropValue.R.ToString()+","+$ePropValue.G.ToString()+","+$ePropValue.B.ToString()+")"}
                         else {$ePropValue = '"' +$ePropValue +'"'}
