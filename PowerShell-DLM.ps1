@@ -23,13 +23,18 @@ function Size{
 function GetMousePos{
     return [System.Windows.Forms.Cursor]::Position
 }
-#
+#########################################################
+############################  Global Variables
 $global:MDPos
 $global:MDSize
 $global:MDLoc
 $global:Resizing
 $global:ResizeTarg
 $global:PropOwner
+$global:ObjSelect = New-Object System.Windows.Forms.Label
+$global:ObjSelect.BackColor = [System.Drawing.Color]::Transparent
+$global:ObjSelect.ForeColor = [System.Drawing.Color]::Transparent
+
 function FormBorder_MouseHover(){
     $MousePos_X = [System.Windows.Forms.Cursor]::Position.X
     $MousePos_Y = [System.Windows.Forms.Cursor]::Position.Y
@@ -220,6 +225,8 @@ function NewItem_MouseDown{
         if($this.Name -eq "TABCTRL_"){
             $global:PropOwner = $this.Controls[0]
         }else {$global:PropOwner = $this}
+        #$parent = FindParentControl -child_form $global:PropOwner
+
         foreach($prop in $global:PropOwner.GetType().GetProperties()){
         
             $ePropName = $prop.Name
@@ -550,6 +557,42 @@ Function FormPanel_MouseClick{
         $FormPanel.Controls.Add($NewLabel)
     }
 }
+function Obj_ToFront{
+    if($global:PropOwner -ne $null){
+        $parent = FindParentControl -child_form $global:PropOwner -src $FormPanel
+        Write-Host $parent.Name
+        $parent.Controls.Remove($global:PropOwner)
+        $parent.Controls.AddRange(@($global:PropOwner)+$parent.Controls)
+    }
+}
+
+function Obj_ToBack{
+    if($global:PropOwner -ne $null){
+        $parent = FindParentControl -child_form $global:PropOwner -src $FormPanel
+        Write-Host $parent.Name
+        $parent.Controls.Remove($global:PropOwner)
+        $parent.Controls.Add($global:PropOwner)
+    }
+}
+
+function FindParentControl{
+    param ($child_form,$src)
+    if($child_form -ne $null){
+        $found_parent = $null
+        if($src -eq $null){$src = $FormPanel}
+        foreach($item in $src.Controls){
+            if($item -eq $child_form){
+                return $src
+            }else{
+                if($item.Controls.Count -gt 0){
+                    FindParentControl -child_form $child_form -src $item
+                }
+            }
+        }
+    }
+}
+#########################################################################
+######################## Form Builder & Properties
 $FormPanel = New-Object System.Windows.Forms.Panel
 $FormPanel.Location = Point 205 45
 $FormPanel.Size = Size 400 300
@@ -574,6 +617,8 @@ $FormProperties.BackColor = [System.Drawing.Color]::FromArgb(255,255,255)
 $FormProperties.Anchor=([System.Windows.Forms.AnchorStyles]::Right + [System.Windows.Forms.AnchorStyles]::Top)
 $FormProperties.AutoScroll = $true
 
+#########################################################################
+######################## Menu Strip
 $DLMMenu = New-Object System.Windows.Forms.MenuStrip
 $DLMMenu.Location = Point 0 0
 $DLMMenu.Name = "DLMMenu"
@@ -589,19 +634,34 @@ $File_Save.Add_Click({DLM_Save})
 $File_Load = New-Object System.Windows.Forms.ToolStripMenuItem
 $File_Load.Text = "Load"
 $File_Load.Add_Click({DLM_Load})
-$File_Delete = New-Object System.Windows.Forms.ToolStripMenuItem
-$File_Delete.Text = "Delete Object"
-$File_Delete.Add_Click({if($global:PropOwner -ne $null){$global:PropOwner.Dispose()}})
+$Menu_File.DropDownItems.AddRange(@($File_Save,$File_Load,$File_Exit))
 
-$Menu_File.DropDownItems.AddRange(@($File_Save,$File_Load,$File_Delete,$File_Exit))
+$Menu_Obj = New-Object System.Windows.Forms.ToolStripMenuItem
+$Menu_Obj.Text = "Objects"
+$Obj_Delete = New-Object System.Windows.Forms.ToolStripMenuItem
+$Obj_Delete.Text = "Delete Object"
+$Obj_Delete.Add_Click({if($global:PropOwner -ne $null){$global:PropOwner.Dispose()}})
+$Obj_ToFront = New-Object System.Windows.Forms.ToolStripMenuItem
+$Obj_ToFront.Text = "Bring Object To Front"
+$Obj_ToFront.Add_Click({Obj_ToFront})
+$Obj_ToBack = New-Object System.Windows.Forms.ToolStripMenuItem
+$Obj_ToBack.Text = "Bring Object To Front"
+$Obj_ToBack.Add_Click({Obj_ToFront})
+$Menu_Obj.DropDownItems.AddRange(@($Obj_ToBack,$Obj_ToFront,$Obj_Delete))
 
-$DLMMenu.Items.AddRange(@($Menu_File))
+#########################################################################
+######################## Main Form
+
+$DLMMenu.Items.AddRange(@($Menu_File,$Menu_Obj))
 
 $DLM.ClientSize = new-object System.Drawing.Size(1000, 600)
-$DLM.Controls.AddRange(@($DLMMenu,$FormList, $FormTitlebar,$FormProperties, $FormPanel,$FormBorder))
+$DLM.Controls.AddRange(@($DLMMenu,$FormList, $FormTitlebar,$FormProperties,$global:ObjSelect, $FormPanel,$FormBorder))
 $DLM.MainMenuStrip = $DLMMenu
 $DLM.Name = "PowerShell-DLM"
 $DLM.Text = "PowerShell-DLM"
+
+#########################################################################
+######################## Loop
 $MainLoop = New-Object System.Windows.Forms.Timer
 $MainLoop.Interval = 100
 
@@ -636,12 +696,12 @@ function MainLoop{
         }else {$global:NotDoubleClick = $true}
      }elseif($global:NotDoubleClick) {$global:NotDoubleClick = $false}
 }
-function DLM_MouseDown{
-    if ($_.Button -eq [System.Windows.Forms.MouseButtons]::Right ) {
-            [System.Windows.MessageBox]::Show("Rigth mouse up")
-    }
-    
-}
+#function DLM_MouseDown{
+#    if ($_.Button -eq [System.Windows.Forms.MouseButtons]::Right ) {
+#            [System.Windows.MessageBox]::Show("Rigth mouse up")
+#    }
+#    
+#}          (Left here to remind me how to do Right Clicks)
 
 #$DLM.Add_MouseDown({DLM_MouseDown $sender $EventArgs})
 $DLM.Add_MouseDown( {DLM_MouseDown})
