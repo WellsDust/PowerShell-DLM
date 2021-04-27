@@ -235,88 +235,93 @@ function NewItem_MouseDown{
         }
         $FormProperties.Controls.Clear()
         $NextY = 0
+        Write-Host $this.Name
         if($this.Name -eq "TABCTRL_"){
             $global:PropOwner = $this.Controls[0]
         }else {$global:PropOwner = $this}
         #$parent = FindParentControl -child_form $global:PropOwner
-
-        foreach($prop in $global:PropOwner.GetType().GetProperties()){
+        if($global:PropOwner){
+            foreach($prop in $global:PropOwner.GetType().GetProperties()){
         
-            $ePropName = $prop.Name
-            if($ePropName -notin $UnsupportedVariables){
-                $ePropValue = $prop.GetValue($global:PropOwner)
+                $ePropName = $prop.Name
+                if($ePropName -notin $UnsupportedVariables){
+                    $ePropValue = $prop.GetValue($global:PropOwner)
 
-                $PropLabel = New-Object System.Windows.Forms.Label
-                $PropLabel.Location = Point 0 $NextY
-                $PropLabel.Size = Size 100 25
-                $PropLabel.Text = $ePropName
-                $PropLabel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
-                $PropType= $prop.ToString().Split(" ")[0]
-                #Write-Host ($prop.Name + ": "+$PropType)
-                if($PropType -eq "Boolean" ){
-                    $PropValue = New-Object System.Windows.Forms.ComboBox
-                    $PropValue.Items.AddRange(@("True","False"))
-                }
-                elseif($PropType -eq "System.String"){
-                    $PropValue = New-Object System.Windows.Forms.TextBox
+                    $PropLabel = New-Object System.Windows.Forms.Label
+                    $PropLabel.Location = Point 0 $NextY
+                    $PropLabel.Size = Size 100 25
+                    $PropLabel.Text = $ePropName
+                    $PropLabel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+                    $PropType= $prop.ToString().Split(" ")[0]
+                    #Write-Host ($prop.Name + ": "+$PropType)
+                    if($PropType -eq "Boolean" ){
+                        $PropValue = New-Object System.Windows.Forms.ComboBox
+                        $PropValue.Items.AddRange(@("True","False"))
+                    }
+                    elseif($PropType -eq "System.String"){
+                        $PropValue = New-Object System.Windows.Forms.TextBox
             
-                }elseif($PropType -eq "Int32"){
-                    $PropValue = New-Object System.Windows.Forms.NumericUpDown
-                    $PropValue.Maximum = 9999
+                    }elseif($PropType -eq "Int32"){
+                        $PropValue = New-Object System.Windows.Forms.NumericUpDown
+                        $PropValue.Maximum = 9999
             
-                }elseif($PropType -eq "System.Windows.Forms.BorderStyle"){
-                    $PropValue = New-Object System.Windows.Forms.ComboBox
-                    $PropValue.Items.AddRange(@("None","Fixed3D", "Fixed Single"))
+                    }elseif($PropType -eq "System.Windows.Forms.BorderStyle"){
+                        $PropValue = New-Object System.Windows.Forms.ComboBox
+                        $PropValue.Items.AddRange(@("None","Fixed3D", "Fixed Single"))
             
             
-                }elseif ($PropType -eq "System.Drawing.Color"){
-                    $PropValue = New-Object System.Windows.Forms.Button
-                    #[System.Drawing.Color]::FromArgb(180,180,180)
-                    $PropValue.BackColor = $ePropValue
-                    $PropValue.ForeColor = $ePropValue
-                    $PropValue.Add_Click({PropValue_ChangeColor})
-                }elseif ($PropType -eq "System.Drawing.Font"){
-                    $PropValue = New-Object System.Windows.Forms.Button
-                    #[System.Drawing.Color]::FromArgb(180,180,180)
-                    $PropValue.Font = $ePropValue
-                    $PropValue.Text = $ePropValue.FontFamily.Name
-                    $PropValue.Add_Click({PropValue_ChangeFont})
-                }elseif($PropType -eq "System.Drawing.ContentAlignment"){
-                    #[System.Drawing.ContentAlignment]::
-                    $PropValue = New-Object System.Windows.Forms.ComboBox
-                    $PropValue.Items.AddRange(@("TopLeft","TopCenter","TopRight","MiddleLeft","MiddleCenter","MiddleRight","BottomLeft","BottomCenter","BottomRight"))
-                }elseif($PropType -eq "System.Windows.Forms.Appearance"){
-                    #[System.Windows.Forms.Appearance]::
-                    $PropValue = New-Object System.Windows.Forms.ComboBox
-                    $PropValue.Items.AddRange(@("Button","Normal"))
-                }elseif($PropType -eq "System.Windows.Forms.AnchorStyles"){
-                    #[System.Windows.Forms.AnchorStyles]::
-                    $PropValue = New-Object System.Windows.Forms.ComboBox
-                    $PropValue.Items.AddRange(@("None", "Top","Top, Left", "Top, Left, Right","Top, Bottom, Left, Right", "Bottom", "Bottom, Left, Right","Bottom, Right","Left","Left, Right","Right"))
-                }elseif($PropType -eq "System.Windows.Forms.DockStyle"){
-                    #[System.Windows.Forms.DockStyle]::
-                    $PropValue = New-Object System.Windows.Forms.ComboBox
-                    $PropValue.Items.AddRange(@("None","Fill", "Top", "Bottom", "Left","Right"))
-                }
-                else {
-                    #Write-Host $PropType
-                    $PropValue = New-Object System.Windows.Forms.TextBox
-                    $ePropValue = $PropType
-                }
-                if($PropValue -ne $null){
-                    if($PropType -ne "System.Drawing.Font"){$PropValue.Text = $ePropValue}
-                    $PropValue.Name = $ePropName
-                    $PropValue.Location = Point 100 $NextY
-                    $PropValue.Size = Size 130 25
-                    #$FormBorder.LostFocus
-                    $PropValue.Add_LostFocus({PropValue_Change})
-                    $PropValue.Add_Enter({PropValue_Change})
-                    $PropValue.Add_TextChanged({PropValue_Change})
+                    }elseif ($PropType -eq "System.Drawing.Color"){
+                        $PropValue = New-Object System.Windows.Forms.Button
+                        #[System.Drawing.Color]::FromArgb(180,180,180)
+                        $PropValue.BackColor = $ePropValue
+                        $PropValue.ForeColor = $ePropValue
+                        $PropValue.Add_Click({PropValue_ChangeColor})
+                    }elseif ($PropType -eq "System.Drawing.Font"){
+                        $PropValue = New-Object System.Windows.Forms.Button
+                        #[System.Drawing.Color]::FromArgb(180,180,180)
+                        $PropValue.Font = $ePropValue
+                        $PropValue.Text = $ePropValue.FontFamily.Name
+                        $PropValue.Add_Click({PropValue_ChangeFont})
+                    }elseif($PropType -eq "System.Drawing.ContentAlignment"){
+                        #[System.Drawing.ContentAlignment]::
+                        $PropValue = New-Object System.Windows.Forms.ComboBox
+                        $PropValue.Items.AddRange(@("TopLeft","TopCenter","TopRight","MiddleLeft","MiddleCenter","MiddleRight","BottomLeft","BottomCenter","BottomRight"))
+                    }elseif($PropType -eq "System.Windows.Forms.Appearance"){
+                        #[System.Windows.Forms.Appearance]::
+                        $PropValue = New-Object System.Windows.Forms.ComboBox
+                        $PropValue.Items.AddRange(@("Button","Normal"))
+                    }elseif($PropType -eq "System.Windows.Forms.AnchorStyles"){
+                        #[System.Windows.Forms.AnchorStyles]::
+                        $PropValue = New-Object System.Windows.Forms.ComboBox
+                        $PropValue.Items.AddRange(@("None", "Top","Top, Left", "Top, Left, Right","Top, Bottom, Left, Right", "Bottom", "Bottom, Left, Right","Bottom, Right","Left","Left, Right","Right"))
+                    }elseif($PropType -eq "System.Windows.Forms.DockStyle"){
+                        #[System.Windows.Forms.DockStyle]::
+                        $PropValue = New-Object System.Windows.Forms.ComboBox
+                        $PropValue.Items.AddRange(@("None","Fill", "Top", "Bottom", "Left","Right"))
+                    }
+                    else {
+                        #Write-Host $PropType
+                        $PropValue = New-Object System.Windows.Forms.TextBox
+                        $ePropValue = $PropType
+                    }
+                    if($PropValue -ne $null){
+                        if($PropType -ne "System.Drawing.Font"){$PropValue.Text = $ePropValue}
+                        $PropValue.Name = $ePropName
+                        $PropValue.Location = Point 100 $NextY
+                        $PropValue.Size = Size 130 25
+                        #$FormBorder.LostFocus
+                        $PropValue.Add_LostFocus({PropValue_Change})
+                        $PropValue.Add_Enter({PropValue_Change})
+                        $PropValue.Add_TextChanged({PropValue_Change})
         
-                    $FormProperties.Controls.AddRange(@($PropLabel,$PropValue))
+                        $FormProperties.Controls.AddRange(@($PropLabel,$PropValue))
+                    }
+                    $NextY = $NextY + 25
                 }
-                $NextY = $NextY + 25
             }
+        }
+        else{
+            Write-Host "No PropOwner?"
         }
     }
 }
@@ -325,9 +330,11 @@ $global:DoubleClick = $false
 function NewItem_MouseUp{
     FormPanel_MouseClick
     if($global:DoubleClick){
+        $global:Moving = $false
         $global:DoubleClick = $false
-        #Write-Host "Insert DoubleClick action..."
-        if($this.Name ="TABCTRL_"){
+        
+        Write-Host "Insert DoubleClick action..."
+        if($this.Name -eq "TABCTRL_"){
             $item = $this.Controls[0]
             if($item -ne $null){
                 $item.TabPages.Add("Tab Page ("+($item.TabPages.Count+1).ToString()+")")
@@ -336,32 +343,34 @@ function NewItem_MouseUp{
                 $this.Text = "........................" + $this.Text
             }
         }
-    }else {
+    }
+    else {
         $global:DoubleClick = $true
-    }
-    if($global:ResizeTarg.Name -ne ""){
-        $global:ResizeTarg.Cursor = [System.Windows.Forms.Cursors]::Default
-    }
-    $this.Cursor = [System.Windows.Forms.Cursors]::Default
-    $global:Resizing = $false
-    $global:Moving = $false
-    if($this -in $FormPanel.Controls){
-        foreach($item in $FormPanel.Controls){
-            if($this -ne $item){
-                if($this.Location.x -ge $item.Location.x){
-                   if($this.Location.y -ge $item.Location.y){
-                        if($this.Location.x -le $item.Location.x + $item.Size.Width - ($this.Size.Width/2)){
-                            if($this.Location.y -le $item.Location.y + $item.Size.Height - ($this.Size.Height/2)){
-                                if($item.Name -eq "TABCTRL_"){
-                                    $ctrl = $item.Controls[0]
-                                    $locdif = $this.location - $item.Location
-                                    $ctrl.TabPages[$ctrl.SelectedIndex].Controls.AddRange(@($this) + $ctrl.TabPages[$ctrl.SelectedIndex].Controls)
-                                    $this.Tag = "TABCTRL_"
-                                    $this.Location=$locdif
-                                }elseif($item.GetType().ToString() -in @("System.Windows.Forms.Panel","System.Windows.Forms.GroupBox")){
-                                    $locdif = $this.location - $item.Location
-                                    $item.Controls.AddRange(@($this) + $item.Controls)
-                                    $this.Location=$locdif
+        if($global:Resizing){
+            Write-Host $global:ResizeTarg.ToString()
+            $global:ResizeTarg.Cursor = [System.Windows.Forms.Cursors]::Default
+        }
+        $this.Cursor = [System.Windows.Forms.Cursors]::Default
+        $global:Resizing = $false
+        $global:Moving = $false
+        if($this -in $FormPanel.Controls){
+            foreach($item in $FormPanel.Controls){
+                if($this -ne $item){
+                    if($this.Location.x -ge $item.Location.x){
+                       if($this.Location.y -ge $item.Location.y){
+                            if($this.Location.x -le $item.Location.x + $item.Size.Width - ($this.Size.Width/2)){
+                                if($this.Location.y -le $item.Location.y + $item.Size.Height - ($this.Size.Height/2)){
+                                    if($item.Name -eq "TABCTRL_"){
+                                        $ctrl = $item.Controls[0]
+                                        $locdif = $this.location - $item.Location
+                                        $ctrl.TabPages[$ctrl.SelectedIndex].Controls.AddRange(@($this) + $ctrl.TabPages[$ctrl.SelectedIndex].Controls)
+                                        $this.Tag = "TABCTRL_"
+                                        $this.Location=$locdif
+                                    }elseif($item.GetType().ToString() -in @("System.Windows.Forms.Panel","System.Windows.Forms.GroupBox")){
+                                        $locdif = $this.location - $item.Location
+                                        $item.Controls.AddRange(@($this) + $item.Controls)
+                                        $this.Location=$locdif
+                                    }
                                 }
                             }
                         }
@@ -493,38 +502,12 @@ $FormTitlebar.BackColor = [System.Drawing.Color]::FromArgb(200,200,200)
 $global:Numbers = 1
 Function FormPanel_MouseClick{
     if($FormList.SelectedIndex -gt -1){
+        $item = $FormList.Items[$FormList.SelectedIndex]
+        $cmd = '$NewLabel = New-Object System.Windows.Forms.' + $item
+        Invoke-Expression $cmd
+
         
-        if($FormList.SelectedIndex -eq 0){ #Button
-            $NewLabel = New-Object System.Windows.Forms.Button
-        }elseif($FormList.SelectedIndex -eq 1){ #CheckBox
-            $NewLabel = New-Object System.Windows.Forms.CheckBox
-        }elseif($FormList.SelectedIndex -eq 2){ #CheckedListBox
-            $NewLabel = New-Object System.Windows.Forms.CheckedListBox
-        } elseif($FormList.SelectedIndex -eq 3){ #ContextMenu
-            $NewLabel = New-Object System.Windows.Forms.ContextMenu
-        } elseif($FormList.SelectedIndex -eq 4){ #DataGridView
-            $NewLabel = New-Object System.Windows.Forms.DataGridView
-        } elseif($FormList.SelectedIndex -eq 5){ #DateTimePicker
-            $NewLabel = New-Object System.Windows.Forms.DateTimePicker
-        } elseif($FormList.SelectedIndex -eq 6){ #GroupBox
-            $NewLabel = New-Object System.Windows.Forms.GroupBox
-        } elseif($FormList.SelectedIndex -eq 7){ #HScrollBar
-            $NewLabel = New-Object System.Windows.Forms.HScrollBar
-        } elseif($FormList.SelectedIndex -eq 8){ #Label
-            $NewLabel = New-Object System.Windows.Forms.Label
-        } elseif($FormList.SelectedIndex -eq 9){ #ListBox
-            $NewLabel = New-Object System.Windows.Forms.ListBox
-        } elseif($FormList.SelectedIndex -eq 10){ #ListView
-            $NewLabel = New-Object System.Windows.Forms.ListView
-        } elseif($FormList.SelectedIndex -eq 11){ #Menu
-            $NewLabel = New-Object System.Windows.Forms.Menu
-        } elseif($FormList.SelectedIndex -eq 12){ #PictureBox
-            $NewLabel = New-Object System.Windows.Forms.PictureBox
-        } elseif($FormList.SelectedIndex -eq 13){ #ProgressBar
-            $NewLabel = New-Object System.Windows.Forms.ProgressBar
-        } elseif($FormList.SelectedIndex -eq 14){ #RadioButton
-            $NewLabel = New-Object System.Windows.Forms.RadioButton
-        } elseif($FormList.SelectedIndex -eq 15){ #TabControl
+        if($NewLabel.GetType().ToString() -eq "System.Windows.Forms.TabControl"){ #TabControl
             $NewLabel = New-Object System.Windows.Forms.Label
             $NewLabel.Tag = "TabControl"
             $TabCtrl = New-Object System.Windows.Forms.TabControl
@@ -544,19 +527,8 @@ Function FormPanel_MouseClick{
             $NewLabel.Text = "...................    +"
             $TabCtrl.Tag = "TABCTRL_"
             
-            
-        } elseif($FormList.SelectedIndex -eq 16){ #TextBox
-            $NewLabel = New-Object System.Windows.Forms.TextBox
-        } elseif($FormList.SelectedIndex -eq 17){ #TrackBar
-            $NewLabel = New-Object System.Windows.Forms.TrackBar
-        } elseif($FormList.SelectedIndex -eq 18){ #TreeView
-            $NewLabel = New-Object System.Windows.Forms.TreeView
-        } elseif($FormList.SelectedIndex -eq 19){ #VScrollBar
-            $NewLabel = New-Object System.Windows.Forms.VScrollBar
-        } elseif($FormList.SelectedIndex -eq 20){ #VScrollBar
-            $NewLabel = New-Object System.Windows.Forms.Panel
-        } 
-        
+        }
+        #>
         $MousePos = GetMousePos
         $NewLabel.Location = Point ($MousePos.x - $FormPanel.Location.x-$DLM.Location.x) ($MousePos.y-$FormPanel.Location.y-$DLM.Location.y)
         #Write-Host $NewLabel.Location
@@ -582,7 +554,7 @@ Function FormPanel_MouseClick{
 function Obj_ToFront{
     if($global:PropOwner -ne $null){
         $parent = FindParentControl -child_form $global:PropOwner -src $FormPanel
-        Write-Host $parent.Name
+        #Write-Host $parent.Name
         $parent.Controls.Remove($global:PropOwner)
         $parent.Controls.AddRange(@($global:PropOwner)+$parent.Controls)
     }
@@ -591,7 +563,7 @@ function Obj_ToFront{
 function Obj_ToBack{
     if($global:PropOwner -ne $null){
         $parent = FindParentControl -child_form $global:PropOwner -src $FormPanel
-        Write-Host $parent.Name
+        #Write-Host $parent.Name
         $parent.Controls.Remove($global:PropOwner)
         $parent.Controls.Add($global:PropOwner)
     }
@@ -604,6 +576,29 @@ function Obj_Delete{
             $parent.Dispose()
         }
         $global:PropOwner.Dispose()
+    }
+}
+
+function View_Code{
+    if($FormCode.Visible){
+        $FormCode.Visible = $false
+        $FormCode.Enabled = $false
+        $View_Code.Text = "Code"
+    }else {
+        $FormCode.Visible = $true
+        $FormCode.Enabled = $true
+        $View_Code.Text = "Form"
+
+        DLM_Save
+        $FormCode.Text = ""
+        $IOStream = New-Object System.IO.StreamReader "NewForm.ps1"
+        $line = 1
+        while (($getline =$IOStream.ReadLine()) -ne $null)
+        {
+            if($line -eq 1){$FormCode.Text = $getline}
+            else {$FormCode.Text = $FormCode.Text +[System.Environment]::NewLine +$getline}
+            $line++
+        }
     }
 }
 
@@ -623,6 +618,7 @@ function FindParentControl{
         }
     }
 }
+
 #########################################################################
 ######################## Right Click Menu
 $RClickMenu = New-Object System.Windows.Forms.ContextMenu
@@ -638,6 +634,14 @@ $FormPanel.Size = Size 400 300
 $FormPanel.Name ="FormPanel"
 $FormPanel.BackColor = [System.Drawing.Color]::FromArgb(230,230,230)
 $FormPanel.Add_MouseClick({FormPanel_MouseClick})
+
+$FormCode =  New-Object System.Windows.Forms.RichTextBox
+$FormCode.Location = Point 205 45
+$FormCode.Size = Size 400 300
+$FormCode.Name = "FormCode"
+$FormCode.Visible = $false
+$FormCode.Enabled = $false
+$FormCode.WordWrap = $true
 
 $FormList =New-Object System.Windows.Forms.ListBox
 $FormList.Location = Point 0 25
@@ -688,13 +692,21 @@ $Obj_ToBack.Text = "Bring Object To Front"
 $Obj_ToBack.Add_Click({Obj_ToFront})
 $Menu_Obj.DropDownItems.AddRange(@($Obj_ToBack,$Obj_ToFront,$Obj_Delete))
 
+$Menu_View = New-Object System.Windows.Forms.ToolStripMenuItem
+$Menu_View.Text = "View"
+$View_Code = New-Object System.Windows.Forms.ToolStripMenuItem
+$View_Code.Text = "Code"
+$View_Code.Add_Click({View_Code})
+$Menu_View.DropDownItems.AddRange(@($View_Code))
+
+$DLMMenu.Items.AddRange(@($Menu_File,$Menu_Obj,$Menu_View))
 #########################################################################
 ######################## Main Form
 
-$DLMMenu.Items.AddRange(@($Menu_File,$Menu_Obj))
+
 
 $DLM.ClientSize = new-object System.Drawing.Size(1000, 600)
-$DLM.Controls.AddRange(@($DLMMenu,$FormList, $FormTitlebar,$FormProperties,$global:ObjSelect, $FormPanel,$FormBorder))
+$DLM.Controls.AddRange(@($DLMMenu,$FormList, $FormTitlebar,$FormProperties,$global:ObjSelect, $FormCode, $FormPanel,$FormBorder))
 $DLM.MainMenuStrip = $DLMMenu
 $DLM.Name = "PowerShell-DLM"
 $DLM.Text = "PowerShell-DLM"
@@ -713,6 +725,7 @@ function MainLoop{
         $global:ResizeTarg.Size = Size (($MousePos.X - $global:MDPos.X) + $GetSize.Width) (($MousePos.Y - $global:MDPos.Y) + $GetSize.Height)
         if($global:ResizeTarg.Name -eq "FormBorder"){
             $FormPanel.Size = Size (($MousePos.X - $global:MDPos.X) + $GetSize.Width-10) (($MousePos.Y - $global:MDPos.Y) + $GetSize.Height-5)
+            $FormCode.Size = $FormPanel.Size
             $FormTitlebar.Size = Size (($MousePos.X - $global:MDPos.X) + $GetSize.Width) (20)
             
         }elseif($global:ResizeTarg.Name -eq "TABCTRL_"){
@@ -743,7 +756,7 @@ function MainLoop{
 #}          (Left here to remind me how to do Right Clicks)
 
 #$DLM.Add_MouseDown({DLM_MouseDown $sender $EventArgs})
-$DLM.Add_MouseDown( {DLM_MouseDown})
+#$DLM.Add_MouseDown( {DLM_MouseDown})
 function OnFormClosing_DLM($Sender,$e){ 
     # $this represent sender (object)
     # $_ represent  e (eventarg)
@@ -778,7 +791,7 @@ function DLM_Load{
                 if($getline.Contains("MainForm = New-Object") -eq $false){
                     $newexp = $getline.Replace("MainForm","FormPanel")
                     $newexp = $newexp.Replace("ClientSize","Size")
-                    Write-Host $newexp
+                    #Write-Host $newexp
                     Invoke-Expression $newexp
 
                     if($newexp.Contains("New-Object")){
@@ -793,7 +806,7 @@ function DLM_Load{
             }
         }elseif($getline.Contains(".Controls")){
             $newexp = $getline.Replace("MainForm","FormPanel")
-            Write-Host $newexp
+            #Write-Host $newexp
             Invoke-Expression $newexp
         }
     }
@@ -816,7 +829,7 @@ function DLM_Load{
             $NewLabel.Controls.Add($item)
             $NewLabel.Size = $item.Size
             $item.Size = $NewLabel.Size
-            Write-Host "TABCTRL_ Created"
+            #Write-Host "TABCTRL_ Created"
             $item.Location = Point 0 0
             $NewLabel.Name = "TABCTRL_"
             
@@ -866,14 +879,14 @@ function OutputControls{
 
                     if($ePropName -in @("Left","Top")){
                         if($parent.Name -eq "TABCTRL_"){
-                            Write-Host "Update location " + ($parent.Left.ToString() +" _ " +$parent.Top.ToString())
+                            #Write-Host "Update location " + ($parent.Left.ToString() +" _ " +$parent.Top.ToString())
                             if($ePropName -eq "Left"){$ePropValue = $parent.Left}
                             else {$ePropValue = $parent.Top}
                         }
                     }
                     
                     if($ePropValue -ne $null -and $ePropValue.ToString() -ne ""){
-                        Write-Host $item.GetType()
+                        #Write-Host $item.GetType()
                         if($ePropValue.ToString() -eq "True"){$ePropValue = '$true'}
                         elseif($ePropValue.ToString() -eq "False"){$ePropValue = '$false'}
                         elseif($ePropName -eq "System.Windows.Forms.Appearance"){$ePropValue = '[System.Windows.Forms.Appearance]::' + $ePropValue}
