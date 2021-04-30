@@ -214,7 +214,7 @@ function NewItem_MouseDown{
         }
 
         if($CanSize){
-            #Write-Host "Start Size"
+            Write-Host "Start Size"
             $global:MDPos = [System.Windows.Forms.Cursor]::Position
             $global:ResizeTarg = $this
             $global:Resizing = $true
@@ -342,6 +342,17 @@ function NewItem_MouseUp{
                 $item.TabPages[$item.TabPages.Count-1].Name = ("Tab Page "+$global:Numbers.ToString())
                 $this.Text = "........................" + $this.Text
             }
+        }else{
+            View_Code
+            $LastInd = $FormCode.Text.LastIndexOf('$'+$this.Name +".")
+            $FormCode.SelectionStart = $LastInd
+            $FormCode.SelectionLength = $this.Name.Length + 2
+            if($FormCode.Text.Contains('$'+$this.Name +'.add_Click(') -eq $false){
+                $GetLine = $FormCode.GetLineFromCharIndex($LastInd)
+                $FormCode.SelectionStart = $FormCode.Text.IndexOf($FormCode.Lines[$GetLine])
+                $FormCode.SelectedText = '$'+$this.Name +'.add_Click({$'+$this.Name+"_Click})" + [System.Environment]::NewLine + $FormCode.SelectedText
+            }
+            
         }
     }
     else {
@@ -590,15 +601,20 @@ function View_Code{
         $View_Code.Text = "Form"
 
         DLM_Save
+
         $FormCode.Text = ""
         $IOStream = New-Object System.IO.StreamReader "NewForm.ps1"
         $line = 1
         while (($getline =$IOStream.ReadLine()) -ne $null)
         {
-            if($line -eq 1){$FormCode.Text = $getline}
-            else {$FormCode.Text = $FormCode.Text +[System.Environment]::NewLine +$getline}
+            if($line -gt 1){
+                $FormCode.AppendText([System.Environment]::NewLine)
+            }
+            $FormCode.AppendText($getline)
+
             $line++
         }
+        $IOStream.Close()
     }
 }
 
@@ -674,10 +690,13 @@ $File_Exit.Add_Click({$DLM.Close()})
 $File_Save = New-Object System.Windows.Forms.ToolStripMenuItem
 $File_Save.Text = "Save"
 $File_Save.Add_Click({DLM_Save})
+$File_SaveAs = New-Object System.Windows.Forms.ToolStripMenuItem
+$File_SaveAs.Text = "Save As.."
+$File_SaveAs.Add_Click({DLM_Save($true)})
 $File_Load = New-Object System.Windows.Forms.ToolStripMenuItem
 $File_Load.Text = "Load"
 $File_Load.Add_Click({DLM_Load})
-$Menu_File.DropDownItems.AddRange(@($File_Save,$File_Load,$File_Exit))
+$Menu_File.DropDownItems.AddRange(@($File_Save,$File_SaveAs,$File_Load,$File_Exit))
 
 $Menu_Obj = New-Object System.Windows.Forms.ToolStripMenuItem
 $Menu_Obj.Text = "Objects"
@@ -748,30 +767,16 @@ function MainLoop{
         }else {$global:NotDoubleClick = $true}
      }elseif($global:NotDoubleClick) {$global:NotDoubleClick = $false}
 }
-#function DLM_MouseDown{
-#    if ($_.Button -eq [System.Windows.Forms.MouseButtons]::Right ) {
-#            [System.Windows.MessageBox]::Show("Rigth mouse up")
-#    }
-#    
-#}          (Left here to remind me how to do Right Clicks)
 
-#$DLM.Add_MouseDown({DLM_MouseDown $sender $EventArgs})
-#$DLM.Add_MouseDown( {DLM_MouseDown})
-function OnFormClosing_DLM($Sender,$e){ 
-    # $this represent sender (object)
-    # $_ represent  e (eventarg)
-
-    # Allow closing
-    Echo "Testing"
-    ($_).Cancel= $False
-}
 function Activate{
    
     $MainLoop.Start()
 }
 
+
 #########################################################################
 ######################## Saving & Loading
+$global:FileSave = "NewForm.ps1"
 function DLM_Load{
     $FormPanel.Controls.Clear()
     $FileDialog = New-Object System.Windows.Forms.OpenFileDialog
@@ -779,11 +784,21 @@ function DLM_Load{
     $FileDialog.FilterIndex = 2
     $FileDialog.ShowDialog()
     $IOStream = New-Object System.IO.StreamReader $FileDialog.FileName
+    $global:FileSave = $FileDialog.FileName
+    $FileDialog.Dispose()
     $line = 1
     while (($getline =$IOStream.ReadLine()) -ne $null)
     {
         $line++
-        if($getline.Contains("=")){
+        if($getline.Contains("MainForm")){
+            if($getline.Contains(".Controls")){
+                $newexp = $getline.Replace("MainForm","FormPanel")
+                Write-Host $newexp
+                Invoke-Expression $newexp
+            }
+            Write-Host $getline
+        }
+        elseif($getline.Contains("=")){
             $cmdsplit = $getline.Split("=")
             $cmdsplit[0] = $cmdsplit[0].Replace(" ","")
             if($cmdsplit[1] -ne " "){
@@ -798,26 +813,31 @@ function DLM_Load{
                         $global:Numbers++
                         $addfunc = $newexp.Split(" =")[0]
                         if($addfunc.Contains(".") -eq $false){
-                            $addfunc = $addfunc + ".Add_MouseMove({NewItem_MouseMove});" + $addfunc + ".Add_MouseDown({NewItem_MouseDown});"+$addfunc+".Add_MouseUp({NewItem_MouseUp});"+$addfunc+".Add_DoubleClick({NewItem_DoubleClick})"
-                            Invoke-Expression $addfunc
+                            #$addfunc =  $addfunc + ".Add_MouseDown({NewItem_MouseDown});"+$addfunc+".Add_MouseUp({NewItem_MouseUp});"+$addfunc+".Add_DoubleClick({NewItem_DoubleClick})"
+                            
+                            Invoke-Expression ($addfunc + ".Add_MouseMove({NewItem_MouseMove})")
+                            Invoke-Expression ($addfunc + ".Add_MouseDown({NewItem_MouseDown})")
+                            Invoke-Expression ($addfunc + ".Add_MouseUp({NewItem_MouseUp})")
+                            Invoke-Expression ($addfunc+'.ContextMenu = $RClickMenu')
+
                         }
                     }
                 }
             }
         }elseif($getline.Contains(".Controls")){
             $newexp = $getline.Replace("MainForm","FormPanel")
-            #Write-Host $newexp
+            Write-Host $newexp
             Invoke-Expression $newexp
         }
     }
+    $IOStream.Close()
 
     $FormBorder.Height = $FormPanel.Height+5
     $FormBorder.Width = $FormPanel.Width+10
-    $FormPanel.Name="MainForm"
+    $FormPanel.Name="FormPanel"
     $FormTitlebar.Width=$FormBorder.Width
     $DLM.Width = $FormBorder.Width+500
     
-    $IOStream.Close()
     $FileDialog.Dispose()
     foreach($item in $FormPanel.Controls){
         Write-Host $item.GetType()
@@ -835,6 +855,7 @@ function DLM_Load{
             
             $NewLabel.BackColor = [System.Drawing.Color]::FromArgb(20,20,20)
             $NewLabel.Add_MouseMove({NewItem_MouseMove})
+            $NewLabel.Add_MouseHover({NewItem_MouseHover})
             $NewLabel.Add_MouseDown({NewItem_MouseDown})
             $NewLabel.Add_MouseUp({NewItem_MouseUp})
             $NewLabel.Add_DoubleClick({NewItem_DoubleClick})
@@ -847,14 +868,23 @@ function DLM_Load{
 
 function DLM_Save{
     #Write-Host "Wish this was ez"
+    param($saveas)
+    if($saveas){
+        $FileDialog = New-Object System.Windows.Forms.SaveFileDialog
+        $FileDialog.Filter = "txt files (*.txt)|*.txt|PowerShell (*.ps1)|*.ps1"
+        $FileDialog.FilterIndex = 2
+        $FileDialog.ShowDialog()
+        $global:FileSave = $FileDialog.FileName
+        $FileDialog.Dispose()
+    }
     $MainFormOut = '[void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")'+"`n"+'[void][Reflection.Assembly]::LoadWithPartialName("System.Drawing")'+"`n"+"Add-Type -AssemblyName PresentationCore,PresentationFramework`n"
     $MainFormOut = $MainFormOut + '$MainForm = New-Object System.Windows.Forms.Form'+"`n"
     $MainFormOut = $MainFormOut + '$MainForm.ClientSize = New-Object System.Drawing.Point(' + $FormPanel.Size.Width+','+$FormPanel.Size.Height+")`n"
     $MainFormOut =$MainFormOut + '$MainForm.Name = "Main Form (DLM)"' +"`n" + '$MainForm.Text = "Main Form - Title"' + "`n"
     $Controls = OutputControls -Form $FormPanel
-    ($MainFormOut+$Controls+"`n"+'$MainForm.ShowDialog()') | Out-File "NewForm.ps1"
+    ($MainFormOut+$Controls+"`n"+'$MainForm.ShowDialog()') | Out-File $global:FileSave
 }
-$UnsupportedVariables = @("LineColor","DialogResult","AutoScrollMinSize","AutoScrollPosition","AutoScrollMargin","DataSource","FormatInfo","AutoCompleteCustomSource","Site","RightToLeft","ImeMode","AutoSizeMode","Cursor","DisplayRectangle","Size","Location","ClientSize","AccessibleDefaultActionDescription","Region","Container","Padding","PreferredSize","WindowTarget","TopLevelControl","RecreatingHandle","ProductVersion","ProductName","Parent","MaximumSize","MinimumSize","Margin","IsMirrored","IsAccessible","InvokeRequired","IsHandleCreated","HasChildren","Handle","Disposing","IsDisposed","DeviceDpi","DataBindings","Created","Controls","ContextMenuStrip","ContextMenu","ContainsFocus","CompanyName","ClientRectangle","CausesValidation","Capture","Bounds","BindingContext","BackgroundImageLayout","BackgroundImage","LayoutEngine","AutoScrollOffset","AccessibleRole","AccessibleName","AccessibleDescription","AccessibleEfaultActionDescription","AccessibilityObject","UseVisualStyleBackColor","UseCompatibleTextRendering","TextImageRelation","Image","ImageAlign","ImageKey","ImageList")
+$UnsupportedVariables = @("ContextMenu","LineColor","DialogResult","AutoScrollMinSize","AutoScrollPosition","AutoScrollMargin","DataSource","FormatInfo","AutoCompleteCustomSource","Site","RightToLeft","ImeMode","AutoSizeMode","Cursor","DisplayRectangle","Size","Location","ClientSize","AccessibleDefaultActionDescription","Region","Container","Padding","PreferredSize","WindowTarget","TopLevelControl","RecreatingHandle","ProductVersion","ProductName","Parent","MaximumSize","MinimumSize","Margin","IsMirrored","IsAccessible","InvokeRequired","IsHandleCreated","HasChildren","Handle","Disposing","IsDisposed","DeviceDpi","DataBindings","Created","Controls","ContextMenuStrip","ContextMenu","ContainsFocus","CompanyName","ClientRectangle","CausesValidation","Capture","Bounds","BindingContext","BackgroundImageLayout","BackgroundImage","LayoutEngine","AutoScrollOffset","AccessibleRole","AccessibleName","AccessibleDescription","AccessibleEfaultActionDescription","AccessibilityObject","UseVisualStyleBackColor","UseCompatibleTextRendering","TextImageRelation","Image","ImageAlign","ImageKey","ImageList")
 $ReadOnlyVariables = @("FlatAppearance","VisibleCount","CustomTabOffsets","SelectedIndices","TabPages","TabCount","RowCount","ItemSize","DockPadding","VerticalScroll","HorizontalScroll","SelectedItems","Items","Site","Right","Focused","CanSelect","CanFocus","Bottom","TextLength","PreferredHeight","PreferredWidth","CanUndo")
 $UnsupportedVariables = $UnsupportedVariables + $ReadOnlyVariables
 function OutputControls{
@@ -919,7 +949,6 @@ function OutputControls{
     return $output
 }
 
-$DLM.Add_FormClosing( { OnFormClosing_DLM $DLM $EventArgs} )
 $DLM.Add_Shown({Activate})
 $DLM.ShowDialog()
 #Free ressources
