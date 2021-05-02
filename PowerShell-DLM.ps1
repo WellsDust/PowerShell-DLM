@@ -1,30 +1,47 @@
-﻿# Load external assemblies
+﻿<#
+.SYNOPSIS
+PowerShell Form Designer
+.DESCRIPTION
+This script allows you to build your own forms to use in PowerShell!
+.NOTES
+    Version: 1.12
+    Author: WellsDust
+    Creation Date: 4/24/2021
+#>
+#######################################################################################################################
+################### Declare Assemblys               ###################################################################
+################### Functions:                      ###################################################################
+###################     MsgBox      (See Line: 23)  ###################################################################
+###################     Point       (See Line: 30)  ###################################################################
+###################     GetMousePos (See Line: 39)  ###################################################################
+#######################################################################################################################
 [void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
 [void][Reflection.Assembly]::LoadWithPartialName("System.Drawing")
 [void][Reflection.Assembly]::LoadWithPartialName("System.Management.Automation.PSMethod")
 Add-Type -AssemblyName PresentationCore,PresentationFramework
 
-function MsgBox{
+function MsgBox{ #Simplify [System.Windows.MessageBox]::Show()
     param(
         [string]$msg,[string]$title
     )
     [System.Windows.MessageBox]::Show($msg,$title)
 }
 
-function Point{
+function Point{ #Simplify System.Drawing.Point
     param ([int32]$x, [int32]$y)
     return (New-Object System.Drawing.Point($x,$y))
 }
-function Size{
+function Size{ #Simplify System.Drawing.Size
     param([int32]$x, [int32]$y)
     return (New-Object System.Drawing.Size($x,$y))
 }
 
-function GetMousePos{
+function GetMousePos{#Simplify [System.Windows.Forms.Cursor]::Position
     return [System.Windows.Forms.Cursor]::Position
 }
-#########################################################
-############################  Global Variables
+#######################################################################################################################
+################### Declare Global Variables  #########################################################################
+#######################################################################################################################
 $global:MDPos
 $global:MDSize
 $global:MDLoc
@@ -34,6 +51,14 @@ $global:PropOwner
 $global:ObjSelect = New-Object System.Windows.Forms.Label
 $global:ObjSelect.BackColor = [System.Drawing.Color]::Transparent
 $global:ObjSelect.ForeColor = [System.Drawing.Color]::Transparent
+
+#######################################################################################################################
+################### $FormBorder                     ###################################################################
+################### Functions:                      ###################################################################
+###################     FormBorder_MouseHover (See Line: 23)  #########################################################
+###################     FormBorder_MouseDown  (See Line: 30)  #########################################################
+###################     FormBorder_MouseUp    (See Line: 39)  #########################################################
+#######################################################################################################################
 
 function FormBorder_MouseHover(){
     $MousePos_X = [System.Windows.Forms.Cursor]::Position.X
@@ -60,6 +85,7 @@ function FormBorder_MouseHover(){
         $this.Cursor = [System.Windows.Forms.Cursors]::Default
     }
 }
+
 
 function FormBorder_MouseDown{
     $MousePos_X = [System.Windows.Forms.Cursor]::Position.X
@@ -106,6 +132,15 @@ function FormBorder_MouseUp{
     $global:Resizing = $false
     $global:Moving = $false
 }
+
+
+#######################################################################################################################
+################### $NewItem                        ###################################################################
+################### Functions:                      ###################################################################
+###################     NewItem_MouseMove (See Line: 23)  #########################################################
+###################     NewItem_MouseDown  (See Line: 30)  #########################################################
+###################     NewItem_MouseUp    (See Line: 39)  #########################################################
+#######################################################################################################################
 
 function NewItem_MouseMove(){
     $parent = FindParentControl -child_form $this
@@ -392,9 +427,14 @@ function NewItem_MouseUp{
     }
 
 }
-function NewItem_DoubleClick{
-    Write-Host "This doesn't work saddly..."
-}
+
+#######################################################################################################################
+################### $prop  (Properties)                       #########################################################
+################### Functions:                                #########################################################
+###################     PropValue_ChangeColor (See Line: 23)  #########################################################
+###################     PropValue_ChangeFont  (See Line: 30)  #########################################################
+###################     PropValue_Change    (See Line: 39)    #########################################################
+#######################################################################################################################
 function PropValue_ChangeColor{
     $ColorDialog = New-Object System.Windows.Forms.ColorDialog
     $ColorDialog.ShowDialog()
@@ -492,6 +532,11 @@ function PropValue_Change{
     #$bool = New-Object System.Management.Automation.PSMethod
     #$bool.Value=$true
 }
+
+#######################################################################################################################
+################### Initialize/Setup: $FormBorder and $FormTitleBar                       #############################
+###################     $global:Numbers is used for naming new form controls              #############################
+#######################################################################################################################
 $FormBorder = New-Object System.Windows.Forms.Label
 $FormBorder.Location = Point(200) (45)
 $FormBorder.Name = "FormBorder"
@@ -511,6 +556,18 @@ $FormTitlebar.Size = Size(410) (20)
 $FormTitlebar.Text = "  PowerShell Form"
 $FormTitlebar.BackColor = [System.Drawing.Color]::FromArgb(200,200,200)
 $global:Numbers = 1
+
+#######################################################################################################################
+################### $FormPanel                                 ########################################################
+################### Functions:                                 ########################################################
+###################     PropPanel_MouseClick (See Line: 573)    ########################################################
+#######################################################################################################################
+$FormPanel = New-Object System.Windows.Forms.Panel
+$FormPanel.Location = Point 205 45
+$FormPanel.Size = Size 400 300
+$FormPanel.Name ="FormPanel"
+$FormPanel.BackColor = [System.Drawing.Color]::FromArgb(230,230,230)
+$FormPanel.Add_MouseClick({FormPanel_MouseClick})
 Function FormPanel_MouseClick{
     if($FormList.SelectedIndex -gt -1){
         $item = $FormList.Items[$FormList.SelectedIndex]
@@ -562,6 +619,20 @@ Function FormPanel_MouseClick{
         $FormPanel.Controls.Add($NewLabel)
     }
 }
+########################################################################################################################
+################### $RClickMenu   (Right-Click Menu)            ######################################################## 
+################### Functions:                                  ########################################################
+###################     Obj_ToFront          (See Line: 637)    ########################################################
+###################     Obj_ToBack           (See Line: 646)    ########################################################
+###################     Obj_Delete           (See Line: 655)    ########################################################
+###################     FindParentControl    (See Line: 667)    ########################################################
+########################################################################################################################
+$RClickMenu = New-Object System.Windows.Forms.ContextMenu
+$RClickMenu.MenuItems.AddRange(@("Bring To Front","Send To Back","Delete"))
+$RClickMenu.MenuItems[0].Add_Click({Obj_ToFront})
+$RClickMenu.MenuItems[1].Add_Click({Obj_ToBack})
+$RClickMenu.MenuItems[2].Add_Click({Obj_Delete})
+
 function Obj_ToFront{
     if($global:PropOwner -ne $null){
         $parent = FindParentControl -child_form $global:PropOwner -src $FormPanel
@@ -590,33 +661,6 @@ function Obj_Delete{
     }
 }
 
-function View_Code{
-    if($FormCode.Visible){
-        $FormCode.Visible = $false
-        $FormCode.Enabled = $false
-        $View_Code.Text = "Code"
-    }else {
-        $FormCode.Visible = $true
-        $FormCode.Enabled = $true
-        $View_Code.Text = "Form"
-
-        DLM_Save
-
-        $FormCode.Text = ""
-        $IOStream = New-Object System.IO.StreamReader "NewForm.ps1"
-        $line = 1
-        while (($getline =$IOStream.ReadLine()) -ne $null)
-        {
-            if($line -gt 1){
-                $FormCode.AppendText([System.Environment]::NewLine)
-            }
-            $FormCode.AppendText($getline)
-
-            $line++
-        }
-        $IOStream.Close()
-    }
-}
 
 function FindParentControl{
     param ($child_form,$src)
@@ -635,21 +679,10 @@ function FindParentControl{
     }
 }
 
-#########################################################################
-######################## Right Click Menu
-$RClickMenu = New-Object System.Windows.Forms.ContextMenu
-$RClickMenu.MenuItems.AddRange(@("Bring To Front","Send To Back","Delete"))
-$RClickMenu.MenuItems[0].Add_Click({Obj_ToFront})
-$RClickMenu.MenuItems[1].Add_Click({Obj_ToBack})
-$RClickMenu.MenuItems[2].Add_Click({Obj_Delete})
+
 #########################################################################
 ######################## Form Builder & Properties
-$FormPanel = New-Object System.Windows.Forms.Panel
-$FormPanel.Location = Point 205 45
-$FormPanel.Size = Size 400 300
-$FormPanel.Name ="FormPanel"
-$FormPanel.BackColor = [System.Drawing.Color]::FromArgb(230,230,230)
-$FormPanel.Add_MouseClick({FormPanel_MouseClick})
+
 
 $FormCode =  New-Object System.Windows.Forms.RichTextBox
 $FormCode.Location = Point 205 45
@@ -676,106 +709,14 @@ $FormProperties.BackColor = [System.Drawing.Color]::FromArgb(255,255,255)
 $FormProperties.Anchor=([System.Windows.Forms.AnchorStyles]::Right + [System.Windows.Forms.AnchorStyles]::Top)
 $FormProperties.AutoScroll = $true
 
-#########################################################################
-######################## Menu Strip
-$DLMMenu = New-Object System.Windows.Forms.MenuStrip
-$DLMMenu.Location = Point 0 0
-$DLMMenu.Name = "DLMMenu"
-$DLMMenu.TabIndex = 0
-$Menu_File = New-Object System.Windows.Forms.ToolStripMenuItem
-$Menu_File.Text = "File"
-$File_Exit = New-Object System.Windows.Forms.ToolStripMenuItem
-$File_Exit.Text = "Exit"
-$File_Exit.Add_Click({$DLM.Close()})
-$File_Save = New-Object System.Windows.Forms.ToolStripMenuItem
-$File_Save.Text = "Save"
-$File_Save.Add_Click({DLM_Save})
-$File_SaveAs = New-Object System.Windows.Forms.ToolStripMenuItem
-$File_SaveAs.Text = "Save As.."
-$File_SaveAs.Add_Click({DLM_Save($true)})
-$File_Load = New-Object System.Windows.Forms.ToolStripMenuItem
-$File_Load.Text = "Load"
-$File_Load.Add_Click({DLM_Load})
-$Menu_File.DropDownItems.AddRange(@($File_Save,$File_SaveAs,$File_Load,$File_Exit))
 
-$Menu_Obj = New-Object System.Windows.Forms.ToolStripMenuItem
-$Menu_Obj.Text = "Objects"
-$Obj_Delete = New-Object System.Windows.Forms.ToolStripMenuItem
-$Obj_Delete.Text = "Delete Object"
-$Obj_Delete.Add_Click({Obj_Delete})
-$Obj_ToFront = New-Object System.Windows.Forms.ToolStripMenuItem
-$Obj_ToFront.Text = "Bring Object To Front"
-$Obj_ToFront.Add_Click({Obj_ToFront})
-$Obj_ToBack = New-Object System.Windows.Forms.ToolStripMenuItem
-$Obj_ToBack.Text = "Bring Object To Front"
-$Obj_ToBack.Add_Click({Obj_ToFront})
-$Menu_Obj.DropDownItems.AddRange(@($Obj_ToBack,$Obj_ToFront,$Obj_Delete))
-
-$Menu_View = New-Object System.Windows.Forms.ToolStripMenuItem
-$Menu_View.Text = "View"
-$View_Code = New-Object System.Windows.Forms.ToolStripMenuItem
-$View_Code.Text = "Code"
-$View_Code.Add_Click({View_Code})
-$Menu_View.DropDownItems.AddRange(@($View_Code))
-
-$DLMMenu.Items.AddRange(@($Menu_File,$Menu_Obj,$Menu_View))
-#########################################################################
-######################## Main Form
-
-
-
-$DLM.ClientSize = new-object System.Drawing.Size(1000, 600)
-$DLM.Controls.AddRange(@($DLMMenu,$FormList, $FormTitlebar,$FormProperties,$global:ObjSelect, $FormCode, $FormPanel,$FormBorder))
-$DLM.MainMenuStrip = $DLMMenu
-$DLM.Name = "PowerShell-DLM"
-$DLM.Text = "PowerShell-DLM"
-
-#########################################################################
-######################## Loop
-$MainLoop = New-Object System.Windows.Forms.Timer
-$MainLoop.Interval = 100
-
-$MainLoop.Add_Tick({MainLoop})
-$global:NotDoubleClick = $false
-function MainLoop{
-    if($global:Resizing){
-        $MousePos = [System.Windows.Forms.Cursor]::Position
-        $GetSize = $global:MDSize
-        $global:ResizeTarg.Size = Size (($MousePos.X - $global:MDPos.X) + $GetSize.Width) (($MousePos.Y - $global:MDPos.Y) + $GetSize.Height)
-        if($global:ResizeTarg.Name -eq "FormBorder"){
-            $FormPanel.Size = Size (($MousePos.X - $global:MDPos.X) + $GetSize.Width-10) (($MousePos.Y - $global:MDPos.Y) + $GetSize.Height-5)
-            $FormCode.Size = $FormPanel.Size
-            $FormTitlebar.Size = Size (($MousePos.X - $global:MDPos.X) + $GetSize.Width) (20)
-            
-        }elseif($global:ResizeTarg.Name -eq "TABCTRL_"){
-            #Write-Host "Resize all!"
-            foreach($item in $global:ResizeTarg.Controls){
-                $item.Size = $global:ResizeTarg.Size
-            }
-        }
-        #Write-Host $global:ResizeTarg.Name
-    }elseif($global:Moving){
-        $MousePos = [System.Windows.Forms.Cursor]::Position
-        $Diff = $MousePos - $global:MDPos
-        $global:MoveTarg.Location = Point ($global:MoveTarg.Location.x+$Diff.x) ($global:MoveTarg.Location.y+$Diff.y)
-        $global:MDPos = $MousePos
-     }
-     if($global:DoubleClick){
-        if($global:NotDoubleClick){
-            $global:DoubleClick = $false
-            $global:NotDoubleClick = $false
-        }else {$global:NotDoubleClick = $true}
-     }elseif($global:NotDoubleClick) {$global:NotDoubleClick = $false}
-}
-
-function Activate{
-   
-    $MainLoop.Start()
-}
-
-
-#########################################################################
-######################## Saving & Loading
+#######################################################################################################################
+######################## $DLMMenu Functions: (Menu Strip)        #######################################################
+########################      DLM_Load          (See Line: 723)  #######################################################
+########################      DLM_Save          (See Line: 812)  #######################################################
+########################      OutputControls    (See Line: 833)  #######################################################
+########################      View_Code         (See Line: 894)  #######################################################
+#######################################################################################################################
 $global:FileSave = "NewForm.ps1"
 function DLM_Load{
     $FormPanel.Controls.Clear()
@@ -948,10 +889,142 @@ function OutputControls{
     #Write-Host ($Form.Controls.Count.ToString() + "`n" + $Form.Name)
     return $output
 }
+function View_Code{
+    if($FormCode.Visible){
+        $FormCode.Visible = $false
+        $FormCode.Enabled = $false
+        $View_Code.Text = "Code"
+    }else {
+        $FormCode.Visible = $true
+        $FormCode.Enabled = $true
+        $View_Code.Text = "Form"
+
+        DLM_Save
+
+        $FormCode.Text = ""
+        $IOStream = New-Object System.IO.StreamReader "NewForm.ps1"
+        $line = 1
+        while (($getline =$IOStream.ReadLine()) -ne $null)
+        {
+            if($line -gt 1){
+                $FormCode.AppendText([System.Environment]::NewLine)
+            }
+            $FormCode.AppendText($getline)
+
+            $line++
+        }
+        $IOStream.Close()
+    }
+}
+#######################################################################################################################
+######################## Initialise Menu Strip ($DLMMenu):       ######################################################
+########################      $Menu_File                         ######################################################
+########################      $File_Exit                         ######################################################
+########################      $File_Save                         ######################################################
+########################      $File_SaveAs                       ######################################################
+########################      $File_Load                         ######################################################
+#######################################################################################################################
+$DLMMenu = New-Object System.Windows.Forms.MenuStrip
+$DLMMenu.Location = Point 0 0
+$DLMMenu.Name = "DLMMenu"
+$DLMMenu.TabIndex = 0
+$Menu_File = New-Object System.Windows.Forms.ToolStripMenuItem
+$Menu_File.Text = "File"
+$File_Exit = New-Object System.Windows.Forms.ToolStripMenuItem
+$File_Exit.Text = "Exit"
+$File_Exit.Add_Click({$DLM.Close()})
+$File_Save = New-Object System.Windows.Forms.ToolStripMenuItem
+$File_Save.Text = "Save"
+$File_Save.Add_Click({DLM_Save})
+$File_SaveAs = New-Object System.Windows.Forms.ToolStripMenuItem
+$File_SaveAs.Text = "Save As.."
+$File_SaveAs.Add_Click({DLM_Save($true)})
+$File_Load = New-Object System.Windows.Forms.ToolStripMenuItem
+$File_Load.Text = "Load"
+$File_Load.Add_Click({DLM_Load})
+$Menu_File.DropDownItems.AddRange(@($File_Save,$File_SaveAs,$File_Load,$File_Exit))
+
+$Menu_Obj = New-Object System.Windows.Forms.ToolStripMenuItem
+$Menu_Obj.Text = "Objects"
+$Obj_Delete = New-Object System.Windows.Forms.ToolStripMenuItem
+$Obj_Delete.Text = "Delete Object"
+$Obj_Delete.Add_Click({Obj_Delete})
+$Obj_ToFront = New-Object System.Windows.Forms.ToolStripMenuItem
+$Obj_ToFront.Text = "Bring Object To Front"
+$Obj_ToFront.Add_Click({Obj_ToFront})
+$Obj_ToBack = New-Object System.Windows.Forms.ToolStripMenuItem
+$Obj_ToBack.Text = "Bring Object To Front"
+$Obj_ToBack.Add_Click({Obj_ToFront})
+$Menu_Obj.DropDownItems.AddRange(@($Obj_ToBack,$Obj_ToFront,$Obj_Delete))
+
+$Menu_View = New-Object System.Windows.Forms.ToolStripMenuItem
+$Menu_View.Text = "View"
+$View_Code = New-Object System.Windows.Forms.ToolStripMenuItem
+$View_Code.Text = "Code"
+$View_Code.Add_Click({View_Code})
+$Menu_View.DropDownItems.AddRange(@($View_Code))
+
+$DLMMenu.Items.AddRange(@($Menu_File,$Menu_Obj,$Menu_View))
+
+######################################################################################################################################
+######################## Initialise Main Form ($DLM)     (See Line:  978)       ######################################################
+######################## Functions:                                             ######################################################
+########################     MainLoop                    (See Line:  990)       ######################################################
+########################     Activate                    (See Line: 1021)       ######################################################
+######################################################################################################################################
+
+$DLM.ClientSize = new-object System.Drawing.Size(1000, 600)
+$DLM.Controls.AddRange(@($DLMMenu,$FormList, $FormTitlebar,$FormProperties,$global:ObjSelect, $FormCode, $FormPanel,$FormBorder))
+$DLM.MainMenuStrip = $DLMMenu
+$DLM.Name = "PowerShell-DLM"
+$DLM.Text = "PowerShell-DLM"
+
+
+$MainLoop = New-Object System.Windows.Forms.Timer
+$MainLoop.Interval = 100
+
+$MainLoop.Add_Tick({MainLoop})
+$global:NotDoubleClick = $false
+function MainLoop{ #Handles Sizing, Moving, and DoubleClick
+    if($global:Resizing){
+        $MousePos = [System.Windows.Forms.Cursor]::Position
+        $GetSize = $global:MDSize
+        $global:ResizeTarg.Size = Size (($MousePos.X - $global:MDPos.X) + $GetSize.Width) (($MousePos.Y - $global:MDPos.Y) + $GetSize.Height)
+        if($global:ResizeTarg.Name -eq "FormBorder"){
+            $FormPanel.Size = Size (($MousePos.X - $global:MDPos.X) + $GetSize.Width-10) (($MousePos.Y - $global:MDPos.Y) + $GetSize.Height-5)
+            $FormCode.Size = $FormPanel.Size
+            $FormTitlebar.Size = Size (($MousePos.X - $global:MDPos.X) + $GetSize.Width) (20)
+            
+        }elseif($global:ResizeTarg.Name -eq "TABCTRL_"){
+            #Write-Host "Resize all!"
+            foreach($item in $global:ResizeTarg.Controls){
+                $item.Size = $global:ResizeTarg.Size
+            }
+        }
+        #Write-Host $global:ResizeTarg.Name
+    }elseif($global:Moving){
+        $MousePos = [System.Windows.Forms.Cursor]::Position
+        $Diff = $MousePos - $global:MDPos
+        $global:MoveTarg.Location = Point ($global:MoveTarg.Location.x+$Diff.x) ($global:MoveTarg.Location.y+$Diff.y)
+        $global:MDPos = $MousePos
+     }
+     if($global:DoubleClick){
+        if($global:NotDoubleClick){
+            $global:DoubleClick = $false
+            $global:NotDoubleClick = $false
+        }else {$global:NotDoubleClick = $true}
+     }elseif($global:NotDoubleClick) {$global:NotDoubleClick = $false}
+}
+
+function Activate{
+    $MainLoop.Start()
+}
+
+#Show the Form and trigger "Activate" function
 
 $DLM.Add_Shown({Activate})
 $DLM.ShowDialog()
-#Free ressources
-$DLM.Dispose()
 
+#Clean exit
+$DLM.Dispose()
 $MainLoop.Dispose()
