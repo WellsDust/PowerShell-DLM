@@ -140,9 +140,25 @@ function FormBorder_MouseUp{
 ################### Functions:                              ############################################################
 ###################     NewItem_MouseMove  (See Line: 146)  ############################################################
 ###################     NewItem_MouseDown  (See Line: 201)  ############################################################
-###################     NewItem_MouseUp    (See Line: 365)  ############################################################
+###################     NewItem_MouseUp    (See Line: 370)  ############################################################
+###################     BuildPropertyList  (See Line: 284)  ############################################################
 ########################################################################################################################
-
+function ParentOffsets{
+    param($child, $offset)
+    if($offset){
+        $offx=$offset[0]
+        $offy=$offset[1]
+        Write-Host $child.GetType().toString()
+        if($child.GetType().toString() -eq "System.Windows.Forms.TabControl"){
+            
+            $offy+=20
+        }
+    }
+    Write-Host $child.GetType().toString()
+    $offset = @($child.Location.x+$offx, $child.Location.y+$offy)
+    $offset = ParentOffsets -child $child.Parent -offset $offset
+    return $offset
+}
 function NewItem_MouseMove(){
     $parent = FindParentControl -child_form $this
     $MousePos_X = [System.Windows.Forms.Cursor]::Position.X
@@ -174,10 +190,11 @@ function NewItem_MouseMove(){
             }
         }
     }elseif($parent.Name -ne "FormPanel" -and $parent.GetType().ToString() -in @("System.Windows.Forms.Panel","System.Windows.Forms.GroupBox")){
-        $LeftEdge += $parent.Location.X
-        $RightEdge += $parent.Location.X
-        $TopEdge += $parent.Location.Y+20
-        $BottomEdge += $parent.Location.Y+20
+        $offset = ParentOffsets -child $this
+        $LeftEdge = $offset[0]
+        $RightEdge = $offset[0] + $this.Size.Width
+        $TopEdge = $offset[1]
+        $BottomEdge = $offset[1] + $this.Size.Height
     }
     if($MousePos_X -ge ($RightEdge)){
        # Write-Host $TopEdge $MousePos_Y
@@ -229,10 +246,11 @@ function NewItem_MouseDown{
                 }
             }
         }elseif($parent.Name -ne "FormPanel" -and $parent.GetType().ToString() -in @("System.Windows.Forms.Panel","System.Windows.Forms.GroupBox")){
-            $LeftEdge += $parent.Location.X
-            $RightEdge += $parent.Location.X
-            $TopEdge += $parent.Location.Y+20
-            $BottomEdge += $parent.Location.Y+20
+            $offset = ParentsOffset
+            $LeftEdge += $offset[0]
+            $RightEdge += $offset[0]
+            $TopEdge += $offset[1]
+            $BottomEdge += $offset[1]
         }
         $offset = 0
         $CanSize = $false
@@ -269,14 +287,19 @@ function NewItem_MouseDown{
             
             $item.Dispose()
         }
-        $FormProperties.Controls.Clear()
+       
         $NextY = 0
-        Write-Host $this.Name
         if($this.Name -eq "TABCTRL_"){
             $global:PropOwner = $this.Controls[0]
         }else {$global:PropOwner = $this}
         #$parent = FindParentControl -child_form $global:PropOwner
-        if($global:PropOwner){
+        BuildPropertyList
+    }
+}
+
+function BuildPropertyList{
+    if($global:PropOwner){
+            $FormProperties.Controls.Clear()
             foreach($prop in $global:PropOwner.GetType().GetProperties()){
         
                 $ePropName = $prop.Name
@@ -359,7 +382,6 @@ function NewItem_MouseDown{
         else{
             Write-Host "No PropOwner?"
         }
-    }
 }
 
 function NewItem_MouseUp{
@@ -594,6 +616,7 @@ Function FormPanel_MouseClick{
             $NewLabel.Name = "TABCTRL_"
             $NewLabel.Text = "...................    +"
             $TabCtrl.Tag = "TABCTRL_"
+            $TabCtrl.Add_Selected({$global:PropOwner = $this.SelectedTab;Write-Host $this.SelectedTab.Name;BuildPropertyList})
             
         }
         #>
@@ -734,7 +757,10 @@ function DLM_Load{
         if($getline.Contains("MainForm")){
             if($getline.Contains(".Controls")){
                 $newexp = $getline.Replace("MainForm","FormPanel")
-                Write-Host $newexp
+                #Write-Host $newexp
+                Invoke-Expression $newexp
+            }elseif($getline.Contains("MainForm.ClientSize")){
+                $newexp = $getline.Replace("MainForm.ClientSize","FormPanel.Size")
                 Invoke-Expression $newexp
             }
             Write-Host $getline
@@ -744,9 +770,8 @@ function DLM_Load{
             $cmdsplit[0] = $cmdsplit[0].Replace(" ","")
             if($cmdsplit[1] -ne " "){
                 $getline = $cmdsplit[0]+" ="+$cmdsplit[1]
-                if($getline.Contains("MainForm = New-Object") -eq $false){
-                    $newexp = $getline.Replace("MainForm","FormPanel")
-                    $newexp = $newexp.Replace("ClientSize","Size")
+                if($getline.Contains('$MainForm = New-Object') -eq $false){
+                    $newexp = $getline.Replace('$MainForm','$FormPanel').Replace('ClientSize','Size')
                     #Write-Host $newexp
                     Invoke-Expression $newexp
 
@@ -767,7 +792,7 @@ function DLM_Load{
             }
         }elseif($getline.Contains(".Controls")){
             $newexp = $getline.Replace("MainForm","FormPanel")
-            Write-Host $newexp
+            #Write-Host $newexp
             Invoke-Expression $newexp
         }
     }
