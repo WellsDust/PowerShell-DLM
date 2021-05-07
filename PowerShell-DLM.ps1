@@ -312,6 +312,8 @@ function BuildPropertyList{
                     $PropLabel.Text = $ePropName
                     $PropLabel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
                     $PropType= $prop.ToString().Split(" ")[0]
+                    $ShortType = $PropType.Split(".")
+                    $ShortType = $ShortType[$ShortType.Count-1]
                     #Write-Host ($prop.Name + ": "+$PropType)
                     if($PropType -eq "Boolean" ){
                         $PropValue = New-Object System.Windows.Forms.ComboBox
@@ -323,11 +325,6 @@ function BuildPropertyList{
                     }elseif($PropType -eq "Int32"){
                         $PropValue = New-Object System.Windows.Forms.NumericUpDown
                         $PropValue.Maximum = 9999
-            
-                    }elseif($PropType -eq "System.Windows.Forms.BorderStyle"){
-                        $PropValue = New-Object System.Windows.Forms.ComboBox
-                        $PropValue.Items.AddRange(@("None","Fixed3D", "Fixed Single"))
-            
             
                     }elseif ($PropType -eq "System.Drawing.Color"){
                         $PropValue = New-Object System.Windows.Forms.Button
@@ -341,24 +338,25 @@ function BuildPropertyList{
                         $PropValue.Font = $ePropValue
                         $PropValue.Text = $ePropValue.FontFamily.Name
                         $PropValue.Add_Click({PropValue_ChangeFont})
-                    }elseif($PropType -eq "System.Drawing.ContentAlignment"){
-                        #[System.Drawing.ContentAlignment]::
-                        $PropValue = New-Object System.Windows.Forms.ComboBox
-                        $PropValue.Items.AddRange(@("TopLeft","TopCenter","TopRight","MiddleLeft","MiddleCenter","MiddleRight","BottomLeft","BottomCenter","BottomRight"))
-                    }elseif($PropType -eq "System.Windows.Forms.Appearance"){
-                        #[System.Windows.Forms.Appearance]::
-                        $PropValue = New-Object System.Windows.Forms.ComboBox
-                        $PropValue.Items.AddRange(@("Button","Normal"))
                     }elseif($PropType -eq "System.Windows.Forms.AnchorStyles"){
                         #[System.Windows.Forms.AnchorStyles]::
                         $PropValue = New-Object System.Windows.Forms.ComboBox
                         $PropValue.Items.AddRange(@("None", "Top","Top, Left", "Top, Left, Right","Top, Bottom, Left, Right", "Bottom", "Bottom, Left, Right","Bottom, Right","Left","Left, Right","Right"))
-                    }elseif($PropType -eq "System.Windows.Forms.DockStyle"){
-                        #[System.Windows.Forms.DockStyle]::
+                    }elseif($ShortType -in @("DockStyle","Appearance","ContentAlignment","BorderStyle","DataGridViewAdvancedBorderStyle",
+                            "DataGridViewAutoSizeColumnsMode","DataGridViewAutoSizeRowsMode","DataGridViewCellBorderStyle","DataGridViewClipboardCopyMode",
+                            "DataGridViewHeaderBorderStyle","DataGridViewCellStyle","DataGridViewColumnCollection","TabAppearance",
+                            "TabAlignment","TabDrawMode"
+                        )){
+                        Write-Host $ShortType
                         $PropValue = New-Object System.Windows.Forms.ComboBox
-                        $PropValue.Items.AddRange(@("None","Fill", "Top", "Bottom", "Left","Right"))
-                    }
-                    else {
+                        Invoke-Expression ('$fields = ['+ $PropType +'].GetFields()')
+                        [System.Collections.ArrayList]$values=@{}
+                        foreach($item in $fields){
+                            $values.Add($item.ToString().Replace($PropType,"").Replace(" ",""))
+                        }
+                        $values.Remove("Int32value__")
+                        $PropValue.Items.AddRange($values)#@("None","Fill", "Top", "Bottom", "Left","Right"))
+                    }else {
                         #Write-Host $PropType
                         $PropValue = New-Object System.Windows.Forms.TextBox
                         $ePropValue = $PropType
@@ -549,6 +547,9 @@ function PropValue_Change{
         elseif($this.Text -eq "None"){$Dock=[System.Windows.Forms.DockStyle]::None}
         elseif($this.Text -eq "Fill"){$Dock=[System.Windows.Forms.DockStyle]::Fill}
         $prop.SetValue($PropOwner,$Dock)
+    }else{
+        Invoke-Expression ('$newval = [' + $PropType + ']::' + $this.text)
+        $prop.SetValue($PropOwner,$newval)
     }
     Write-Host $prop.Name
     #$bool = New-Object System.Management.Automation.PSMethod
@@ -595,9 +596,9 @@ Function FormPanel_MouseClick{
         $item = $FormList.Items[$FormList.SelectedIndex]
         $cmd = '$NewLabel = New-Object System.Windows.Forms.' + $item
         Invoke-Expression $cmd
-
         
-        if($NewLabel.GetType().ToString() -eq "System.Windows.Forms.TabControl"){ #TabControl
+        
+        if($item -eq "TabControl"){ #TabControl
             $NewLabel = New-Object System.Windows.Forms.Label
             $NewLabel.Tag = "TabControl"
             $TabCtrl = New-Object System.Windows.Forms.TabControl
@@ -618,8 +619,19 @@ Function FormPanel_MouseClick{
             $TabCtrl.Tag = "TABCTRL_"
             $TabCtrl.Add_Selected({$global:PropOwner = $this.SelectedTab;Write-Host $this.SelectedTab.Name;BuildPropertyList})
             
+            
+        }elseif($item -eq "DataGridView"){
+            $NewLabel.Columns.Add("Column 1","Column 1")
+            $NewLabel.Columns.Add("Column 2","Column 2")
+            $NewLabel.Columns.Add("Column 3","Column 3")
+            $NewLabel[0,0].Style.ForeColor=[System.Drawing.Color]::Red
+            $NewLabel[0,0].Value = "Red"
+            $NewLabel[1,0].Style.ForeColor=[System.Drawing.Color]::Green
+            $NewLabel[1,0].Value = "Green"
+            $NewLabel[2,0].Style.ForeColor=[System.Drawing.Color]::Blue
+            $NewLabel[2,0].Value = "Blue"
         }
-        #>
+        
         $MousePos = GetMousePos
         $NewLabel.Location = Point ($MousePos.x - $FormPanel.Location.x-$DLM.Location.x) ($MousePos.y-$FormPanel.Location.y-$DLM.Location.y)
         #Write-Host $NewLabel.Location
